@@ -58,6 +58,8 @@ export default tseslint.config(
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+      // Input validation and header-injection defenses legitimately match control characters.
+      'no-control-regex': 'off',
       'no-console': 'error',
       'no-restricted-syntax': [
         'error',
