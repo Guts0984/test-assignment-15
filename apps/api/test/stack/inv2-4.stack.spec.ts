@@ -89,7 +89,8 @@ describe('ACC-8 / INV-4: mail chaos (double delivery, SMTP errors, autoreplies)'
     await eventually(
       async () =>
         (await db.outboundEmail.count({
-          where: { ticket: { teamId: team.teamId }, state: 'sent' },
+          // A chaos bounce is reported back after the send and now marks the email `bounced` (review F14); it was sent.
+          where: { ticket: { teamId: team.teamId }, state: { in: ['sent', 'bounced'] } },
         })) === 40,
       120_000,
       '40 acknowledgements sent',
