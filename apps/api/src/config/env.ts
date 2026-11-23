@@ -56,3 +56,6 @@ if (!loaded.ok) {
 }
 
 export const env: Env = loaded.value;
+
+/** Environment handed to child processes (the Prisma CLI); config/env.ts stays the only reader of process.env. */
+export const inheritedEnv = (): NodeJS.ProcessEnv => ({ ...process.env });
