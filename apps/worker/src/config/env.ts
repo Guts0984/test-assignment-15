@@ -13,6 +13,8 @@ export const envSchema = z
     MAIL_DOMAIN: z.string().min(3).default('helpdesk.test'),
     SMTP_HOST: z.string().default('mail-stub'),
     SMTP_PORT: intStr(1025),
+    /** Optional: where to ask whether an email already arrived when a send was cut off (the mail stub's HTTP URL). */
+    DELIVERY_LOOKUP_URL: z.string().url().optional(),
     SMTP_FROM_NAME: z.string().default('Helpdesk Support'),
     MAGIC_LINK_TTL_DAYS: intStr(30),
     SURVEY_TTL_DAYS: intStr(7),

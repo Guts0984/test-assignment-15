@@ -89,6 +89,7 @@ export const runtimeConfig = (
   backoffBaseMs: 200,
   backoffMaxMs: 2000,
   outboundLeaseMs: 5000,
+  deliveryLookupUrl: null,
   ticket: ticketConfig,
   ...over,
 });

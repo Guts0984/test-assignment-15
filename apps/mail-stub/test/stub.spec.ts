@@ -28,7 +28,10 @@ const startReceiver = async (): Promise<string> => {
   return `http://127.0.0.1:${(receiver.address() as AddressInfo).port}/api/v1/inbound/mail`;
 };
 
-const launch = async (chaos: { enabled: boolean; autoreplyRate?: number }): Promise<void> => {
+const launch = async (
+  chaos: { enabled: boolean; autoreplyRate?: number },
+  dedupeMessageId = false,
+): Promise<void> => {
   stub = await startStub({
     smtpPort: 0,
     httpPort: 0,
@@ -36,6 +39,7 @@ const launch = async (chaos: { enabled: boolean; autoreplyRate?: number }): Prom
     inboundSecret: SECRET,
     mailDomain: 'helpdesk.test',
     maxMessages: 1000,
+    dedupeMessageId,
     chaos: {
       enabled: chaos.enabled,
       seed: 1,
@@ -281,23 +285,46 @@ describe('abusive SMTP clients (review F9)', () => {
 });
 
 describe('repeated Message-ID (review F6)', () => {
-  beforeEach(() => launch({ enabled: false }));
+  const mail = {
+    from: 'helpdesk@helpdesk.test',
+    to: 'cust@customer.test',
+    subject: 'Answer',
+    text: 'once',
+    messageId: '<same-id@helpdesk.test>',
+  };
+  const stored = async (): Promise<number> => {
+    const list = (await (await api('/api/messages')).json()) as unknown[];
+    return list.length;
+  };
 
-  it('acknowledges but does not store a second delivery of the same Message-ID to the same recipient', async () => {
-    const mail = {
-      from: 'helpdesk@helpdesk.test',
-      to: 'cust@customer.test',
-      subject: 'Answer',
-      text: 'once',
-      messageId: '<same-id@helpdesk.test>',
-    };
+  it('stores and counts a repeat by default, so a test can prove the system never sends twice', async () => {
+    await launch({ enabled: false });
+    await smtp().sendMail(mail);
+    await smtp().sendMail(mail);
+    expect(await stored()).toBe(2);
+    expect(stub.stats.duplicates).toBe(1);
+  });
+
+  it('can behave like a mailbox provider that drops a repeated Message-ID for the same recipient', async () => {
+    await launch({ enabled: false }, true);
     await smtp().sendMail(mail);
     await smtp().sendMail(mail);
     await smtp().sendMail({ ...mail, to: 'other@customer.test' });
-    const list = (await (await api('/api/messages')).json()) as
-      { messages?: unknown[] } | unknown[];
-    const count = Array.isArray(list) ? list.length : (list.messages?.length ?? 0);
-    expect(count).toBe(2);
+    expect(await stored()).toBe(2);
     expect(stub.stats.duplicates).toBe(1);
+  });
+
+  it('answers a Message-ID lookup, which the worker uses to settle a send that was cut off', async () => {
+    await launch({ enabled: false });
+    await smtp().sendMail(mail);
+    const hit = (await (
+      await api(
+        `/api/messages?messageId=${encodeURIComponent(mail.messageId)}&to=cust@customer.test`,
+      )
+    ).json()) as unknown[];
+    const miss = (await (
+      await api(`/api/messages?messageId=${encodeURIComponent('<other@x.test>')}`)
+    ).json()) as unknown[];
+    expect([hit.length, miss.length]).toEqual([1, 0]);
   });
 });

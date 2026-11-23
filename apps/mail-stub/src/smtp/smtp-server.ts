@@ -7,7 +7,7 @@ export type SmtpStats = {
   transactions: number;
   failed: number;
   delivered: number;
-  /** Repeated deliveries of the same Message-ID to the same recipients that were acknowledged but not stored again. */
+  /** Deliveries of a Message-ID that had already been delivered to the same recipients. */
   duplicates: number;
 };
 
@@ -67,8 +67,9 @@ export const createSmtpServer = (d: SmtpDeps): SMTPServer => {
               .map((r) => r.address.toLowerCase())
               .sort()
               .join(',')}|${p.messageId ?? ''}`;
-            if (d.dedupeMessageId && p.messageId !== undefined && delivered.has(key)) {
-              d.stats.duplicates += 1;
+            const repeated = p.messageId !== undefined && delivered.has(key);
+            if (repeated) d.stats.duplicates += 1; // counted whether or not the repeat is stored
+            if (repeated && d.dedupeMessageId) {
               callback();
               return;
             }

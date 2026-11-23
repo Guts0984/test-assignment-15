@@ -91,6 +91,9 @@ export const createHttpServer = (d: HttpDeps): Server =>
             200,
             d.store.list({
               ...(url.searchParams.has('to') ? { to: url.searchParams.get('to') ?? '' } : {}),
+              ...(url.searchParams.has('messageId')
+                ? { messageId: url.searchParams.get('messageId') ?? '' }
+                : {}),
               ...(url.searchParams.has('subject')
                 ? { subject: url.searchParams.get('subject') ?? '' }
                 : {}),

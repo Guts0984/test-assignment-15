@@ -46,6 +46,7 @@ export {
   runOutboundJob,
   type OutboundMessage,
   type SendFn,
+  type DeliveryLookup,
   type SendResult,
 } from './jobs/outbound';
 export { dueJobs, ensureDurableJobs, type DueJob } from './jobs/reconcile';

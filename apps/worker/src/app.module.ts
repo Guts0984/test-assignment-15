@@ -22,6 +22,7 @@ export class WorkerHost implements OnModuleInit, OnApplicationShutdown {
       backoffBaseMs: env.JOB_BACKOFF_BASE_MS,
       backoffMaxMs: env.JOB_BACKOFF_MAX_MS,
       outboundLeaseMs: env.OUTBOUND_LEASE_MS,
+      deliveryLookupUrl: env.DELIVERY_LOOKUP_URL ?? null,
       ticket: {
         warningRatio: env.SLA_WARNING_RATIO,
         undoSeconds: env.UNDO_SEND_SECONDS,

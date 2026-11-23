@@ -10,6 +10,7 @@ import {
 import { systemClock, type Clock } from '@helpdesk/shared';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
+import { createDeliveryLookup } from '../infra/delivery-lookup';
 import { createSmtpSender } from '../infra/smtp-sender';
 import { createProcessor } from './processor';
 import { createReconciler, queueNames } from './reconciler';
@@ -28,6 +29,8 @@ export type RuntimeConfig = {
   readonly backoffBaseMs: number;
   readonly backoffMaxMs: number;
   readonly outboundLeaseMs: number;
+  /** Base URL of the delivery system's message lookup; null = a cut-off send is simply repeated. */
+  readonly deliveryLookupUrl: string | null;
   readonly ticket: TicketConfig;
 };
 
@@ -66,6 +69,7 @@ export const startWorkerRuntime = async (c: RuntimeConfig): Promise<WorkerRuntim
     cfg: c.ticket,
     policy,
     send: sender.send,
+    lookup: c.deliveryLookupUrl === null ? null : createDeliveryLookup(c.deliveryLookupUrl),
     leaseMs: c.outboundLeaseMs,
     maxAttempts: c.jobMaxAttempts,
     defaultFrom: `support@${c.mailDomain}`,

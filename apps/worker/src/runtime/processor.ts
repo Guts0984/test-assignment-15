@@ -2,6 +2,7 @@ import {
   runOutboundJob,
   runTxJob,
   txHandlers,
+  type DeliveryLookup,
   type Db,
   type RetryPolicy,
   type RunOutcome,
@@ -17,6 +18,7 @@ export type ProcessorDeps = {
   readonly cfg: TicketConfig;
   readonly policy: RetryPolicy;
   readonly send: SendFn;
+  readonly lookup: DeliveryLookup | null;
   readonly leaseMs: number;
   readonly maxAttempts: number;
   readonly defaultFrom: string;
@@ -42,6 +44,7 @@ export const createProcessor =
         maxAttempts: d.maxAttempts,
         defaultFrom: d.defaultFrom,
         send: d.send,
+        lookup: d.lookup,
         publisher: d.publisher,
         policy: d.policy,
       });

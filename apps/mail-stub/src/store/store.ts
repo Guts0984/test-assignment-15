@@ -19,6 +19,7 @@ export type Store = {
   readonly list: (filter?: {
     to?: string;
     subject?: string;
+    messageId?: string;
     limit?: number;
   }) => readonly StoredMail[];
   readonly get: (id: string) => StoredMail | null;
@@ -42,6 +43,7 @@ export const createStore = (max: number): Store => {
           (m) =>
             (f.to === undefined ||
               m.to.some((t) => t.toLowerCase().includes(f.to?.toLowerCase() ?? ''))) &&
+            (f.messageId === undefined || m.messageId === f.messageId) &&
             (f.subject === undefined || m.subject.toLowerCase().includes(f.subject.toLowerCase())),
         )
         .slice(-(f.limit ?? 200))

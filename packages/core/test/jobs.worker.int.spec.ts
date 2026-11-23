@@ -291,6 +291,85 @@ describe('INV-4b / INV-5: outbound email is sent exactly once', () => {
     ).toBe('sent');
   });
 
+  it('a send cut off by a crash is not repeated when the delivery system already has the email (review F6)', async () => {
+    const s = await setup();
+    // a worker claimed the email and died: the row stays `sending` and its lease runs out
+    await db.outboundEmail.update({
+      where: { id: s.reply.outboundId },
+      data: { state: 'sending', leaseUntil: at(T0, 20_000), attempts: 1 },
+    });
+    const log: string[] = [];
+    const asked: string[] = [];
+    const arrived = async (m: { rfcMessageId: string }): Promise<boolean> => {
+      asked.push(m.rfcMessageId);
+      return true;
+    };
+    const lookups = { lookup: arrived };
+    const out = await runOutboundJob(db, {
+      jobId: s.job,
+      outboundId: s.reply.outboundId,
+      now: at(T0, 40_000),
+      leaseMs: 30_000,
+      maxAttempts: 8,
+      defaultFrom: 'support@helpdesk.test',
+      send: send(log),
+      policy,
+      ...lookups,
+    });
+    expect(out).toBe('done');
+    expect(log).toHaveLength(0); // never sent again
+    expect(asked).toHaveLength(1);
+    const row = await db.outboundEmail.findUniqueOrThrow({ where: { id: s.reply.outboundId } });
+    expect(row.state).toBe('sent');
+    expect(
+      (await db.message.findUniqueOrThrow({ where: { id: s.reply.messageId } })).releasedAt,
+    ).not.toBeNull();
+  });
+
+  it('a cut-off send the delivery system has not seen, or cannot answer for, is sent again; a first attempt never asks', async () => {
+    for (const answer of [false, null, 'throws'] as const) {
+      const s = await setup();
+      await db.outboundEmail.update({
+        where: { id: s.reply.outboundId },
+        data: { state: 'sending', leaseUntil: at(T0, 20_000), attempts: 1 },
+      });
+      const log: string[] = [];
+      const lookup = async (): Promise<boolean | null> => {
+        if (answer === 'throws') throw new Error('lookup down');
+        return answer;
+      };
+      await runOutboundJob(db, {
+        jobId: s.job,
+        outboundId: s.reply.outboundId,
+        now: at(T0, 40_000),
+        leaseMs: 30_000,
+        maxAttempts: 8,
+        defaultFrom: 'support@helpdesk.test',
+        send: send(log),
+        policy,
+        lookup,
+      });
+      expect(log, String(answer)).toHaveLength(1);
+    }
+    const fresh = await setup();
+    let asked = 0;
+    await runOutboundJob(db, {
+      jobId: fresh.job,
+      outboundId: fresh.reply.outboundId,
+      now: at(T0, 10_000),
+      leaseMs: 30_000,
+      maxAttempts: 8,
+      defaultFrom: 'support@helpdesk.test',
+      send: send([]),
+      policy,
+      lookup: async () => {
+        asked += 1;
+        return true;
+      },
+    });
+    expect(asked).toBe(0);
+  });
+
   it('five workers racing for the same email send it once', async () => {
     const s = await setup();
     const log: string[] = [];
