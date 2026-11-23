@@ -1,6 +1,8 @@
+import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  resolve: { alias: { '@helpdesk/shared': resolve(__dirname, '../shared/src/index.ts') } },
   test: {
     include: ['src/**/*.spec.ts', 'test/**/*.int.spec.ts'],
     globalSetup: ['test/global-setup.ts'],

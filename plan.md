@@ -338,6 +338,15 @@ Every item below is copied into the README "Decisions" section (checked by `ACC:
 - **A-73 Error mapping.** Body-parser failures map to `MALFORMED_JSON` (400) and `PAYLOAD_TOO_LARGE` (413); non-JSON bodies on JSON routes are `UNSUPPORTED_MEDIA_TYPE` (415) via a content-type check (multipart/raw only under `/public/`, `/portal/`, `/inbound/`); unknown routes are `NOT_FOUND`; anything unexpected is a generic `INTERNAL_ERROR` with the stack only in the server log.
 - **A-74 Agents who leave a team or are deactivated** have their tickets returned to the team queue (history event `returned_to_queue` with the reason) and an assignment run is requested; lowering a limit below the current load is allowed.
 
+- **A-75 Ticket domain lives in `packages/core/src/tickets`** (transactional use-cases shared by api and worker): create, customer-message append/reopen/follow-up, ingest, reply/note/undo, status/priority/team/transfer/take, merge, close+survey, web form. Each takes a `Ctx {tx, now, cfg}` and returns `Result`; trigger-raised errors are mapped at the edge. The api's `TicketService` only adds permission loading and error mapping.
+- **A-76 Merge chains.** A main ticket may collect several duplicates and later be merged itself; the migration `0200` dropped the "source is a main ticket" restriction. Cycles stay impossible (target must not be merged away; a merged ticket cannot be merged again). Replies resolve to the root through a recursive lookup. Customer links of the duplicate are revoked.
+- **A-77 Cancelled replies** stay in `messages` with `cancelled_at` (audit); they are hidden from customers and excluded from conflict checks, first response and last-reply markers. Cancelling re-arms the first-response timers (`cancelled` jobs are re-armed; `done` ones never).
+- **A-78 First response** is set when the reply is created (not sent). If it is undone and no other public reply exists, it is cleared. The customer sees an agent reply only after the sender releases it (`released_at`).
+- **A-79 Anti-forgery** for threading: a Message-ID/References/subject-number match only counts if the sender equals the ticket customer's email (case-insensitive); otherwise the mail becomes a new ticket. Autoreplies/bounces from a non-customer sender (e.g. mailer-daemon) that thread to a ticket are dropped rather than attached.
+- **A-80 Staff-visible 404.** Tickets outside the caller's teams answer 404 (indistinguishable from missing ones); role failures on routes answer 403. Report access is 403 for non-leads, 404 for another team's id.
+- **A-81 Search** (`GET /search`): `#number` or 4-12 digits = ticket number; text with `@` = customer email substring (trigram); otherwise `websearch_to_tsquery('simple')` over messages (notes included for staff) and subjects, then customer name. Newest-updated first, offset cursor, scoped to the caller's teams.
+- **A-82 TypeScript module settings.** `tsconfig.base.json` uses `module: ESNext` + `moduleResolution: Bundler` for typecheck and the editor; the `tsconfig.build.json` files of the CommonJS packages override to `commonjs`/`node10` for emit only (avoids the editor's node10 deprecation warning). The Prisma 6 `datasource url` is kept; `.vscode/settings.json` pins the Prisma extension to Prisma 6 so it does not apply Prisma 7 schema rules.
+
 ---
 
 ## 4. Architecture
@@ -668,7 +677,7 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 - [x] B3 DB schema, migrations, raw SQL guards
 - [x] B4 seed (full / small / none)
 - [x] B5 api core: auth, magic links, error format, OpenAPI + client, admin
-- [ ] B6 ticket domain in api
+- [x] B6 ticket domain in api
 - [ ] B7 mail stub
 - [ ] B8 worker + reconciler
 - [ ] B9 realtime
@@ -688,7 +697,8 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 | B2 | 1f7c46a | ok | ok | ok | n/a | ok (149 shared + 12) | n/a | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 | B3 | be091d0 | ok | ok | ok | n/a | ok (24 db) | ok (real postgres) | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 | B4 | 6e30fd3 | ok | ok | ok | n/a | ok (25 api incl. small seed) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN; full seed run once: 412 s, exact counts via `scripts/acceptance/check-seed.sh` |
-| B5 | (see git log) | ok | ok | ok | ok (regenerated = staged) | ok (api 89 + 4 serial, core 28, shared 149) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
+| B5 | 5243132 | ok | ok | ok | ok (regenerated = staged) | ok (api 89 + 4 serial, core 28, shared 149) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
+| B6 | (see git log) | ok | ok | ok | ok | ok (shared 156, core 79, api 135+4 serial) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 
 ## 11. Acceptance and performance results
 

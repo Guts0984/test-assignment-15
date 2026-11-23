@@ -2415,6 +2415,2698 @@
         "x-access": "staff"
       }
     },
+    "/api/v1/tickets/queue": {
+      "get": {
+        "operationId": "TicketsController_queue",
+        "parameters": [
+          {
+            "name": "teamId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "exclusiveMaximum": false,
+              "exclusiveMinimum": false,
+              "default": 50,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketListDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "My tickets, most urgent SLA deadline first",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/tickets/unassigned": {
+      "get": {
+        "operationId": "TicketsController_unassigned",
+        "parameters": [
+          {
+            "name": "teamId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "exclusiveMaximum": false,
+              "exclusiveMinimum": false,
+              "default": 50,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketListDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Tickets waiting in the queue of my teams",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/tickets/{id}": {
+      "get": {
+        "operationId": "TicketsController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketDetailDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Ticket with the whole correspondence (including internal notes) and its history",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/tickets/{id}/replies": {
+      "post": {
+        "operationId": "TicketsController_reply",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplyInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplyCreatedDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Reply to the customer; the email is held for 10 seconds so it can be undone. 409 TICKET_HAS_NEW_MESSAGES when someone wrote in the meantime.",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/tickets/{id}/replies/{messageId}": {
+      "delete": {
+        "operationId": "TicketsController_undo",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "messageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Undo a reply within its 10-second window",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/tickets/{id}/notes": {
+      "post": {
+        "operationId": "TicketsController_note",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteCreatedDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Internal note the customer never sees",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/tickets/{id}/status": {
+      "put": {
+        "operationId": "TicketsController_status",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Change status (allowed transitions depend on the role)",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/tickets/{id}/priority": {
+      "put": {
+        "operationId": "TicketsController_priority",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriorityInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Change priority; the SLA is recalculated from the creation time",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/tickets/{id}/team": {
+      "put": {
+        "operationId": "TicketsController_team",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketTeamInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Move the ticket to another team",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/tickets/{id}/transfer": {
+      "post": {
+        "operationId": "TicketsController_transfer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Hand the ticket to a colleague (leads and admins can reassign any ticket of the team)",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/tickets/{id}/take": {
+      "post": {
+        "operationId": "TicketsController_take",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Take an unassigned ticket",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/tickets/{id}/merge": {
+      "post": {
+        "operationId": "TicketsController_merge",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Merge this duplicate into the main ticket of the same customer",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/search": {
+      "get": {
+        "operationId": "TicketsController_search",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "exclusiveMaximum": false,
+              "exclusiveMinimum": false,
+              "default": 50,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResultsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Find tickets by correspondence text, customer or number",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/dashboard/teams/{teamId}": {
+      "get": {
+        "operationId": "TicketsController_dashboard",
+        "parameters": [
+          {
+            "name": "teamId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Team lead dashboard: agent load, unassigned queue, at-risk and overdue tickets",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/reports": {
+      "get": {
+        "operationId": "TicketsController_report",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "teamId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "agentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "priority",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "urgent",
+                "high",
+                "normal",
+                "low"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "First response, resolution, SLA share and ratings per team and agent for a period",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/attachments/{id}": {
+      "get": {
+        "operationId": "TicketsController_attachment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File bytes"
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Download an attachment of a ticket you can access",
+        "tags": [
+          "tickets"
+        ],
+        "x-access": "staff"
+      }
+    },
+    "/api/v1/inbound/mail": {
+      "post": {
+        "operationId": "InboundController_receive",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "message/rfc822": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboundAcceptedDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Receive a raw RFC 822 email (called by the mail system; HMAC-signed). It is stored durably and processed by a worker.",
+        "tags": [
+          "inbound"
+        ],
+        "x-access": "public"
+      }
+    },
+    "/api/v1/public/tickets": {
+      "post": {
+        "operationId": "PublicFormController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                },
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicTicketCreatedDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Contact form: subject, text and attachments up to 10 MB. The link to follow the request is emailed, never returned.",
+        "tags": [
+          "public"
+        ],
+        "x-access": "public"
+      }
+    },
+    "/api/v1/portal/ticket": {
+      "get": {
+        "operationId": "PortalController_ticket",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalTicketDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ticket-link": []
+          }
+        ],
+        "summary": "The conversation behind the email link (customer-visible messages only, never internal notes)",
+        "tags": [
+          "portal"
+        ],
+        "x-access": "customer"
+      }
+    },
+    "/api/v1/portal/replies": {
+      "post": {
+        "operationId": "PortalController_reply",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                },
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalReplyResultDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ticket-link": []
+          }
+        ],
+        "summary": "Reply from the portal. On a closed ticket this opens a new request linked to the old one.",
+        "tags": [
+          "portal"
+        ],
+        "x-access": "customer"
+      }
+    },
+    "/api/v1/portal/attachments/{id}": {
+      "get": {
+        "operationId": "PortalController_attachment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File bytes"
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ticket-link": []
+          }
+        ],
+        "summary": "Download an attachment of a customer-visible message",
+        "tags": [
+          "portal"
+        ],
+        "x-access": "customer"
+      }
+    },
+    "/api/v1/survey": {
+      "get": {
+        "operationId": "SurveysController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurveyViewDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "survey-link": []
+          }
+        ],
+        "summary": "The survey behind the link in the email (X-Survey-Token)",
+        "tags": [
+          "survey"
+        ],
+        "x-access": "public"
+      },
+      "put": {
+        "operationId": "SurveysController_rate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SurveyRatingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurveyViewDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "survey-link": []
+          }
+        ],
+        "summary": "Rate the answer 1-5 with an optional comment; the rating can be changed until the link expires (7 days)",
+        "tags": [
+          "survey"
+        ],
+        "x-access": "public"
+      }
+    },
     "/api/v1/time": {
       "get": {
         "operationId": "TimeController_time",
@@ -2621,6 +5313,11 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-Ticket-Token"
+      },
+      "survey-link": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Survey-Token"
       }
     },
     "schemas": {
@@ -2802,6 +5499,10 @@
                     "message"
                   ]
                 }
+              },
+              "data": {
+                "type": "object",
+                "additionalProperties": {}
               },
               "requestId": {
                 "type": "string"
@@ -3499,6 +6200,1652 @@
           "ok",
           "onShift",
           "returnedTickets"
+        ]
+      },
+      "TicketListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "new",
+                    "open",
+                    "waiting_customer",
+                    "on_hold",
+                    "resolved",
+                    "closed"
+                  ]
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "urgent",
+                    "high",
+                    "normal",
+                    "low"
+                  ]
+                },
+                "language": {
+                  "type": "string",
+                  "enum": [
+                    "en",
+                    "uk",
+                    "pl",
+                    "de"
+                  ]
+                },
+                "teamId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "assigneeId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "assigneeName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "customerName": {
+                  "type": "string"
+                },
+                "customerEmail": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "nextDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "firstResponseDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "resolutionDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "slaPaused": {
+                  "type": "boolean"
+                },
+                "firstRespondedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "firstResponseBreached": {
+                  "type": "boolean"
+                },
+                "resolutionBreached": {
+                  "type": "boolean"
+                },
+                "version": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "number",
+                "subject",
+                "status",
+                "priority",
+                "language",
+                "teamId",
+                "assigneeId",
+                "assigneeName",
+                "customerName",
+                "customerEmail",
+                "createdAt",
+                "updatedAt",
+                "nextDueAt",
+                "firstResponseDueAt",
+                "resolutionDueAt",
+                "slaPaused",
+                "firstRespondedAt",
+                "firstResponseBreached",
+                "resolutionBreached",
+                "version"
+              ]
+            }
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "serverTime",
+          "nextCursor"
+        ]
+      },
+      "TicketDetailDto": {
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "new",
+                  "open",
+                  "waiting_customer",
+                  "on_hold",
+                  "resolved",
+                  "closed"
+                ]
+              },
+              "priority": {
+                "type": "string",
+                "enum": [
+                  "urgent",
+                  "high",
+                  "normal",
+                  "low"
+                ]
+              },
+              "language": {
+                "type": "string",
+                "enum": [
+                  "en",
+                  "uk",
+                  "pl",
+                  "de"
+                ]
+              },
+              "teamId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "assigneeId": {
+                "type": "string",
+                "format": "uuid",
+                "nullable": true
+              },
+              "assigneeName": {
+                "type": "string",
+                "nullable": true
+              },
+              "customerName": {
+                "type": "string"
+              },
+              "customerEmail": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "nextDueAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "firstResponseDueAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "resolutionDueAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "slaPaused": {
+                "type": "boolean"
+              },
+              "firstRespondedAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "firstResponseBreached": {
+                "type": "boolean"
+              },
+              "resolutionBreached": {
+                "type": "boolean"
+              },
+              "version": {
+                "type": "integer"
+              },
+              "customerId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "mergedIntoId": {
+                "type": "string",
+                "format": "uuid",
+                "nullable": true
+              },
+              "mergedIntoNumber": {
+                "type": "integer",
+                "nullable": true
+              },
+              "followUpOfId": {
+                "type": "string",
+                "format": "uuid",
+                "nullable": true
+              },
+              "followUpOfNumber": {
+                "type": "integer",
+                "nullable": true
+              },
+              "resolvedAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "closedAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "messageSeq": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "subject",
+              "status",
+              "priority",
+              "language",
+              "teamId",
+              "assigneeId",
+              "assigneeName",
+              "customerName",
+              "customerEmail",
+              "createdAt",
+              "updatedAt",
+              "nextDueAt",
+              "firstResponseDueAt",
+              "resolutionDueAt",
+              "slaPaused",
+              "firstRespondedAt",
+              "firstResponseBreached",
+              "resolutionBreached",
+              "version",
+              "customerId",
+              "mergedIntoId",
+              "mergedIntoNumber",
+              "followUpOfId",
+              "followUpOfNumber",
+              "resolvedAt",
+              "closedAt",
+              "messageSeq"
+            ]
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "seq": {
+                  "type": "integer"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "public",
+                    "note"
+                  ]
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "inbound",
+                    "outbound",
+                    "internal"
+                  ]
+                },
+                "authorKind": {
+                  "type": "string",
+                  "enum": [
+                    "customer",
+                    "agent",
+                    "system"
+                  ]
+                },
+                "authorName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "body": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "releasedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "cancelledAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "sendAfter": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "sendState": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "autoKind": {
+                  "type": "string",
+                  "enum": [
+                    "autoreply",
+                    "bounce"
+                  ],
+                  "nullable": true
+                },
+                "originTicketId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "attachments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "filename": {
+                        "type": "string"
+                      },
+                      "contentType": {
+                        "type": "string"
+                      },
+                      "size": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "filename",
+                      "contentType",
+                      "size"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "seq",
+                "kind",
+                "direction",
+                "authorKind",
+                "authorName",
+                "body",
+                "createdAt",
+                "releasedAt",
+                "cancelledAt",
+                "sendAfter",
+                "sendState",
+                "autoKind",
+                "originTicketId",
+                "attachments"
+              ]
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "actorKind": {
+                  "type": "string"
+                },
+                "actorName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "data": {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "actorKind",
+                "actorName",
+                "data",
+                "createdAt"
+              ]
+            }
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "ticket",
+          "messages",
+          "events",
+          "serverTime"
+        ]
+      },
+      "ReplyInputDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100000,
+            "pattern": "^[^\\x00-\\x08\\x0b-\\x1f\\x7f]*$"
+          },
+          "lastSeenSeq": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": false
+          },
+          "confirmNewMessages": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "body",
+          "lastSeenSeq"
+        ]
+      },
+      "ReplyCreatedDto": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seq": {
+            "type": "integer"
+          },
+          "sendAfter": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "messageId",
+          "seq",
+          "sendAfter",
+          "serverTime"
+        ]
+      },
+      "NoteInputDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100000,
+            "pattern": "^[^\\x00-\\x08\\x0b-\\x1f\\x7f]*$"
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "NoteCreatedDto": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seq": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "messageId",
+          "seq"
+        ]
+      },
+      "StatusInputDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "new",
+              "open",
+              "waiting_customer",
+              "on_hold",
+              "resolved",
+              "closed"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "PriorityInputDto": {
+        "type": "object",
+        "properties": {
+          "priority": {
+            "type": "string",
+            "enum": [
+              "urgent",
+              "high",
+              "normal",
+              "low"
+            ]
+          }
+        },
+        "required": [
+          "priority"
+        ]
+      },
+      "TicketTeamInputDto": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "teamId"
+        ]
+      },
+      "TransferInputDto": {
+        "type": "object",
+        "properties": {
+          "assigneeId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "assigneeId"
+        ]
+      },
+      "MergeInputDto": {
+        "type": "object",
+        "properties": {
+          "targetTicketId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "targetTicketId"
+        ]
+      },
+      "SearchResultsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "new",
+                    "open",
+                    "waiting_customer",
+                    "on_hold",
+                    "resolved",
+                    "closed"
+                  ]
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "urgent",
+                    "high",
+                    "normal",
+                    "low"
+                  ]
+                },
+                "language": {
+                  "type": "string",
+                  "enum": [
+                    "en",
+                    "uk",
+                    "pl",
+                    "de"
+                  ]
+                },
+                "teamId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "assigneeId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "assigneeName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "customerName": {
+                  "type": "string"
+                },
+                "customerEmail": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "nextDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "firstResponseDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "resolutionDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "slaPaused": {
+                  "type": "boolean"
+                },
+                "firstRespondedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "firstResponseBreached": {
+                  "type": "boolean"
+                },
+                "resolutionBreached": {
+                  "type": "boolean"
+                },
+                "version": {
+                  "type": "integer"
+                },
+                "snippet": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "number",
+                "subject",
+                "status",
+                "priority",
+                "language",
+                "teamId",
+                "assigneeId",
+                "assigneeName",
+                "customerName",
+                "customerEmail",
+                "createdAt",
+                "updatedAt",
+                "nextDueAt",
+                "firstResponseDueAt",
+                "resolutionDueAt",
+                "slaPaused",
+                "firstRespondedAt",
+                "firstResponseBreached",
+                "resolutionBreached",
+                "version",
+                "snippet"
+              ]
+            }
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "serverTime",
+          "nextCursor"
+        ]
+      },
+      "DashboardDto": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "onShift": {
+                  "type": "boolean"
+                },
+                "openCount": {
+                  "type": "integer"
+                },
+                "ticketLimit": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "onShift",
+                "openCount",
+                "ticketLimit"
+              ]
+            }
+          },
+          "unassignedCount": {
+            "type": "integer"
+          },
+          "unassigned": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "new",
+                    "open",
+                    "waiting_customer",
+                    "on_hold",
+                    "resolved",
+                    "closed"
+                  ]
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "urgent",
+                    "high",
+                    "normal",
+                    "low"
+                  ]
+                },
+                "language": {
+                  "type": "string",
+                  "enum": [
+                    "en",
+                    "uk",
+                    "pl",
+                    "de"
+                  ]
+                },
+                "teamId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "assigneeId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "assigneeName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "customerName": {
+                  "type": "string"
+                },
+                "customerEmail": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "nextDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "firstResponseDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "resolutionDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "slaPaused": {
+                  "type": "boolean"
+                },
+                "firstRespondedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "firstResponseBreached": {
+                  "type": "boolean"
+                },
+                "resolutionBreached": {
+                  "type": "boolean"
+                },
+                "version": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "number",
+                "subject",
+                "status",
+                "priority",
+                "language",
+                "teamId",
+                "assigneeId",
+                "assigneeName",
+                "customerName",
+                "customerEmail",
+                "createdAt",
+                "updatedAt",
+                "nextDueAt",
+                "firstResponseDueAt",
+                "resolutionDueAt",
+                "slaPaused",
+                "firstRespondedAt",
+                "firstResponseBreached",
+                "resolutionBreached",
+                "version"
+              ]
+            }
+          },
+          "atRisk": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "new",
+                    "open",
+                    "waiting_customer",
+                    "on_hold",
+                    "resolved",
+                    "closed"
+                  ]
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "urgent",
+                    "high",
+                    "normal",
+                    "low"
+                  ]
+                },
+                "language": {
+                  "type": "string",
+                  "enum": [
+                    "en",
+                    "uk",
+                    "pl",
+                    "de"
+                  ]
+                },
+                "teamId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "assigneeId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "assigneeName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "customerName": {
+                  "type": "string"
+                },
+                "customerEmail": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "nextDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "firstResponseDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "resolutionDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "slaPaused": {
+                  "type": "boolean"
+                },
+                "firstRespondedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "firstResponseBreached": {
+                  "type": "boolean"
+                },
+                "resolutionBreached": {
+                  "type": "boolean"
+                },
+                "version": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "number",
+                "subject",
+                "status",
+                "priority",
+                "language",
+                "teamId",
+                "assigneeId",
+                "assigneeName",
+                "customerName",
+                "customerEmail",
+                "createdAt",
+                "updatedAt",
+                "nextDueAt",
+                "firstResponseDueAt",
+                "resolutionDueAt",
+                "slaPaused",
+                "firstRespondedAt",
+                "firstResponseBreached",
+                "resolutionBreached",
+                "version"
+              ]
+            }
+          },
+          "overdue": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "new",
+                    "open",
+                    "waiting_customer",
+                    "on_hold",
+                    "resolved",
+                    "closed"
+                  ]
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "urgent",
+                    "high",
+                    "normal",
+                    "low"
+                  ]
+                },
+                "language": {
+                  "type": "string",
+                  "enum": [
+                    "en",
+                    "uk",
+                    "pl",
+                    "de"
+                  ]
+                },
+                "teamId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "assigneeId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "assigneeName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "customerName": {
+                  "type": "string"
+                },
+                "customerEmail": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "nextDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "firstResponseDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "resolutionDueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "slaPaused": {
+                  "type": "boolean"
+                },
+                "firstRespondedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "firstResponseBreached": {
+                  "type": "boolean"
+                },
+                "resolutionBreached": {
+                  "type": "boolean"
+                },
+                "version": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "number",
+                "subject",
+                "status",
+                "priority",
+                "language",
+                "teamId",
+                "assigneeId",
+                "assigneeName",
+                "customerName",
+                "customerEmail",
+                "createdAt",
+                "updatedAt",
+                "nextDueAt",
+                "firstResponseDueAt",
+                "resolutionDueAt",
+                "slaPaused",
+                "firstRespondedAt",
+                "firstResponseBreached",
+                "resolutionBreached",
+                "version"
+              ]
+            }
+          }
+        },
+        "required": [
+          "teamId",
+          "serverTime",
+          "agents",
+          "unassignedCount",
+          "unassigned",
+          "atRisk",
+          "overdue"
+        ]
+      },
+      "ReportDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "total": {
+            "type": "object",
+            "properties": {
+              "tickets": {
+                "type": "integer"
+              },
+              "firstResponseMedianMinutes": {
+                "type": "number",
+                "nullable": true
+              },
+              "firstResponseP90Minutes": {
+                "type": "number",
+                "nullable": true
+              },
+              "resolutionMedianMinutes": {
+                "type": "number",
+                "nullable": true
+              },
+              "resolutionP90Minutes": {
+                "type": "number",
+                "nullable": true
+              },
+              "withinSlaPercent": {
+                "type": "number",
+                "nullable": true
+              },
+              "breaches": {
+                "type": "integer"
+              },
+              "ratingAverage": {
+                "type": "number",
+                "nullable": true
+              },
+              "ratingCount": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "tickets",
+              "firstResponseMedianMinutes",
+              "firstResponseP90Minutes",
+              "resolutionMedianMinutes",
+              "resolutionP90Minutes",
+              "withinSlaPercent",
+              "breaches",
+              "ratingAverage",
+              "ratingCount"
+            ]
+          },
+          "byTeam": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tickets": {
+                  "type": "integer"
+                },
+                "firstResponseMedianMinutes": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "firstResponseP90Minutes": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "resolutionMedianMinutes": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "resolutionP90Minutes": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "withinSlaPercent": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "breaches": {
+                  "type": "integer"
+                },
+                "ratingAverage": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "ratingCount": {
+                  "type": "integer"
+                },
+                "teamId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "teamName": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "tickets",
+                "firstResponseMedianMinutes",
+                "firstResponseP90Minutes",
+                "resolutionMedianMinutes",
+                "resolutionP90Minutes",
+                "withinSlaPercent",
+                "breaches",
+                "ratingAverage",
+                "ratingCount",
+                "teamId",
+                "teamName"
+              ]
+            }
+          },
+          "byAgent": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tickets": {
+                  "type": "integer"
+                },
+                "firstResponseMedianMinutes": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "firstResponseP90Minutes": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "resolutionMedianMinutes": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "resolutionP90Minutes": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "withinSlaPercent": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "breaches": {
+                  "type": "integer"
+                },
+                "ratingAverage": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "ratingCount": {
+                  "type": "integer"
+                },
+                "agentId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "agentName": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "tickets",
+                "firstResponseMedianMinutes",
+                "firstResponseP90Minutes",
+                "resolutionMedianMinutes",
+                "resolutionP90Minutes",
+                "withinSlaPercent",
+                "breaches",
+                "ratingAverage",
+                "ratingCount",
+                "agentId",
+                "agentName"
+              ]
+            }
+          },
+          "ratingDistribution": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rating": {
+                  "type": "integer"
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "rating",
+                "count"
+              ]
+            }
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "total",
+          "byTeam",
+          "byAgent",
+          "ratingDistribution"
+        ]
+      },
+      "InboundAcceptedDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "duplicate"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "PublicTicketCreatedDto": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "message"
+        ]
+      },
+      "PortalTicketDto": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "new",
+              "open",
+              "waiting_customer",
+              "on_hold",
+              "resolved",
+              "closed"
+            ]
+          },
+          "canReply": {
+            "type": "boolean"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "inbound",
+                    "outbound"
+                  ]
+                },
+                "authorName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "body": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "attachments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "filename": {
+                        "type": "string"
+                      },
+                      "contentType": {
+                        "type": "string"
+                      },
+                      "size": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "filename",
+                      "contentType",
+                      "size"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "direction",
+                "authorName",
+                "body",
+                "createdAt",
+                "attachments"
+              ]
+            }
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "number",
+          "subject",
+          "status",
+          "canReply",
+          "messages",
+          "serverTime"
+        ]
+      },
+      "PortalReplyResultDto": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer"
+          },
+          "newRequest": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "number",
+          "newRequest"
+        ]
+      },
+      "SurveyViewDto": {
+        "type": "object",
+        "properties": {
+          "ticketNumber": {
+            "type": "integer"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer",
+            "nullable": true
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "ticketNumber",
+          "subject",
+          "rating",
+          "comment",
+          "expiresAt"
+        ]
+      },
+      "SurveyRatingDto": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "exclusiveMinimum": false,
+            "maximum": 5,
+            "exclusiveMaximum": false
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 2000,
+            "pattern": "^[^\\x00-\\x08\\x0b-\\x1f\\x7f]*$"
+          }
+        },
+        "required": [
+          "rating"
         ]
       },
       "TimeDto": {

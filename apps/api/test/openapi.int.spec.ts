@@ -36,7 +36,8 @@ describe('OpenAPI document and Swagger UI', () => {
     for (const [path, methods] of Object.entries(doc.paths)) {
       for (const [method, op] of Object.entries(methods)) {
         for (const status of ['400', '401', '403', '404', '413', '415', '500']) {
-          const ref = op.responses[status]?.content?.['application/json']?.schema?.$ref;
+          const content = op.responses[status]?.content ?? {};
+          const ref = Object.values(content)[0]?.schema?.$ref;
           expect(ref, `${method.toUpperCase()} ${path} ${status}`).toMatch(/ErrorResponse/);
         }
       }

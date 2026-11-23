@@ -6,3 +6,5 @@ export const DB_CLOCK = Symbol('DB_CLOCK');
 export const AUTH = Symbol('AUTH');
 export const ADMIN = Symbol('ADMIN');
 export const SHIFTS = Symbol('SHIFTS');
+export const TICKETS = Symbol('TICKETS');
+export const TICKET_CFG = Symbol('TICKET_CFG');

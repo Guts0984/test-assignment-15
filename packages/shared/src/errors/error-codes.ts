@@ -70,6 +70,8 @@ export const errorResponseSchema = z.object({
     code: z.enum(ERROR_CODES),
     message: z.string(),
     details: z.array(errorDetailSchema).optional(),
+    /** Machine-readable extras for specific codes, e.g. the new messages behind TICKET_HAS_NEW_MESSAGES. */
+    data: z.record(z.unknown()).optional(),
     requestId: z.string().optional(),
   }),
 });

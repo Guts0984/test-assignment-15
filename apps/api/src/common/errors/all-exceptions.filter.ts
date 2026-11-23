@@ -20,11 +20,13 @@ const body = (
   message: string,
   requestId: string | undefined,
   details?: Details,
+  data?: Record<string, unknown>,
 ): ErrorResponse => ({
   error: {
     code,
     message,
     ...(details === undefined ? {} : { details }),
+    ...(data === undefined ? {} : { data }),
     ...(requestId === undefined ? {} : { requestId }),
   },
 });
@@ -67,7 +69,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const status = exception.getStatus();
       const raw = exception.getResponse();
       if (isAppErrorBody(raw) && ERROR_CODES.includes(raw.code)) {
-        send(ERROR_HTTP_STATUS[raw.code], body(raw.code, raw.message, requestId, raw.details));
+        send(
+          ERROR_HTTP_STATUS[raw.code],
+          body(raw.code, raw.message, requestId, raw.details, raw.data),
+        );
         return;
       }
       if (status === 400 && /JSON|Unexpected (token|end)/i.test(exception.message)) {

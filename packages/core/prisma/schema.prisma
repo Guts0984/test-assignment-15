@@ -168,6 +168,8 @@ model Message {
   autoKind         String?   @map("auto_kind")
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   releasedAt       DateTime? @map("released_at") @db.Timestamptz(3)
+  cancelledAt      DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  originTicketId   String?   @map("origin_ticket_id") @db.Uuid
 
   ticket      Ticket       @relation(fields: [ticketId], references: [id])
   attachments Attachment[]

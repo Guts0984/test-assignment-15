@@ -182,3 +182,10 @@ export const testClockInput = z
 export const jobIdParam = z
   .object({ id: z.string().regex(/^\d{1,18}$/, 'must be a numeric job id') })
   .strict();
+
+export const replyIdParams = z.object({ id: uuid, messageId: uuid }).strict();
+export const attachmentIdParam = z.object({ id: uuid }).strict();
+export const dashboardParams = z.object({ teamId: uuid }).strict();
+export const queueQuery = z
+  .object({ teamId: uuid.optional(), limit: z.coerce.number().int().min(1).max(100).default(50) })
+  .strict();

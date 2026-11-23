@@ -120,3 +120,4 @@ export {
 export * from './schemas/primitives';
 export * from './schemas/inputs';
 export * from './schemas/outputs';
+export { detectLanguage } from './language/detect-language';

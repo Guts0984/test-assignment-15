@@ -8,9 +8,10 @@ export const appError = (
   code: ErrorCode,
   message: string,
   details?: readonly Detail[],
-): HttpException => new HttpException({ code, message, details }, ERROR_HTTP_STATUS[code]);
+  data?: Record<string, unknown>,
+): HttpException => new HttpException({ code, message, details, data }, ERROR_HTTP_STATUS[code]);
 
 export const isAppErrorBody = (
   v: unknown,
-): v is { code: ErrorCode; message: string; details?: Detail[] } =>
+): v is { code: ErrorCode; message: string; details?: Detail[]; data?: Record<string, unknown> } =>
   typeof v === 'object' && v !== null && 'code' in v && 'message' in v;

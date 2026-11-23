@@ -1,9 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node10",
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"],
+    "types": ["node", "multer"],
     "declaration": false
   },
   "include": ["src"],
