@@ -9,7 +9,8 @@ cd "$TMP/repo"
 cp .env.example .env
 # Only host ports are changed (other stacks may use the defaults); the commands under test are unchanged.
 sed -i 's/^HTTP_PORT=.*/HTTP_PORT=18480/; s/^MAIL_STUB_HOST_PORT=.*/MAIL_STUB_HOST_PORT=18425/; s/^POSTGRES_HOST_PORT=.*/POSTGRES_HOST_PORT=18433/; s/^REDIS_HOST_PORT=.*/REDIS_HOST_PORT=18380/' .env
-SEED_PROFILE=small docker compose -p acc1 up --build -d --wait >/dev/null 2>&1 || { docker compose -p acc1 logs --tail 40 >&2; fail "docker compose up --build did not become healthy"; }
+# lib.sh exported the developer's .env; compose must read only the clone's .env, so start with a clean environment.
+env -i PATH="$PATH" HOME="$HOME" SEED_PROFILE=small docker compose -p acc1 up --build -d --wait >/dev/null 2>&1 || { docker compose -p acc1 logs --tail 40 >&2; fail "docker compose up --build did not become healthy"; }
 curl -fsS "localhost:18480/api/v1/health" >/dev/null && pass "api answers through nginx"
 curl -fsS -o /dev/null "localhost:18480/login" && pass "web answers through nginx"
 curl -fsS -o /dev/null "localhost:18480/docs" && pass "Swagger UI at /docs"
