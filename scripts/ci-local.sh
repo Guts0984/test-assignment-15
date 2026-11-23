@@ -9,8 +9,12 @@ step() { printf '\n==== %s ====\n' "$1"; }
 step "install (frozen lockfile)"
 pnpm install --frozen-lockfile
 
+step "start postgres and redis (CI uses service containers)"
+docker compose up -d --wait postgres redis
+
 step "build shared packages"
 pnpm --filter @helpdesk/shared build
+pnpm --filter @helpdesk/core build
 
 step "typecheck"
 pnpm typecheck

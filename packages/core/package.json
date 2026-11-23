@@ -1,0 +1,25 @@
+{
+  "name": "@helpdesk/core",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "typecheck": "prisma generate && tsc --noEmit",
+    "test": "vitest run",
+    "prisma": "prisma",
+    "migrate": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@helpdesk/shared": "workspace:*",
+    "@prisma/client": "^6.19.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "prisma": "^6.19.3",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

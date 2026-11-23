@@ -321,6 +321,12 @@ Every item below is copied into the README "Decisions" section (checked by `ACC:
 - **A-59 `packages/core` is created in B3** (the first block that needs it), not in B1, to avoid an empty package.
 - **A-60 FSD lint test** shells out to the ESLint CLI from the repo root because `eslint-plugin-boundaries` resolves element patterns against `process.cwd()`.
 
+- **A-61 Agent load lives on `users`** (`open_count`, `ticket_limit`) instead of a separate `agent_load` table. A trigger on `tickets` increments with `UPDATE users SET open_count = open_count + 1 WHERE id = $1 AND open_count < ticket_limit` and raises `AGENT_AT_LIMIT` when no row matches; user rows are touched in id order so swaps cannot deadlock. All writers (auto-assign, lead transfer, take-it) hit the same guard.
+- **A-62 Enumerations are TEXT + CHECK**, not Postgres enum types, so raw SQL stays free of casts. Prisma models see them as strings; typing comes from `packages/shared`.
+- **A-63 Merge guard trigger** raises `TICKET_ALREADY_MERGED` when the target (or the source) was merged away and `TICKETS_NOT_MERGEABLE` for different customers, closed targets and sources that are main tickets of other duplicates. The application flattens earlier duplicates first and locks both rows in id order, so the opposite-direction race never reaches a deadlock.
+- **A-64 `prisma.config.ts`** replaces the deprecated `package.json#prisma` key. Migrations: `0000_init` (generated from the schema + `pg_trgm` + ticket-number sequence starting at 100000) and `0100_guards` (raw SQL: checks, triggers, generated tsvector columns, GIN/trigram and partial indexes, `app_clock` row with a NOTIFY trigger).
+- **A-65 Test database.** Core's Vitest `globalSetup` recreates `helpdesk_test` (name must contain "test") and runs `prisma migrate deploy` once per run; tests create their own fixtures with unique names so files run in parallel.
+
 ---
 
 ## 4. Architecture
@@ -648,7 +654,7 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 - [x] Plan approved
 - [x] B1 repo scaffold + CI
 - [x] B2 packages/shared rules + exhaustive unit tests (ACC-3/4/5)
-- [ ] B3 DB schema, migrations, raw SQL guards
+- [x] B3 DB schema, migrations, raw SQL guards
 - [ ] B4 seed (full / small / none)
 - [ ] B5 api core: auth, magic links, error format, OpenAPI + client, admin
 - [ ] B6 ticket domain in api
@@ -668,7 +674,8 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 | Commit | Hash | install | typecheck | lint | openapi-diff | unit | integration | build | e2e | Notes |
 | ------ | ---- | ------- | --------- | ---- | ------------ | ---- | ----------- | ----- | --- | ----- |
 | B1     |      |         |           |      | n/a          |      | n/a         |       | n/a |       |
-| B2 | (see git log) | ok | ok | ok | n/a | ok (149 shared + 12) | n/a | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
+| B2 | 1f7c46a | ok | ok | ok | n/a | ok (149 shared + 12) | n/a | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
+| B3 | (see git log) | ok | ok | ok | n/a | ok (24 db) | ok (real postgres) | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 
 ## 11. Acceptance and performance results
 

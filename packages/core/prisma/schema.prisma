@@ -1,0 +1,347 @@
+// Source of truth for table shapes. Constraints, triggers, generated columns and special indexes
+// live in prisma/migrations/*_guards (raw SQL). Enumerations are TEXT + CHECK so raw SQL stays simple.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email          String    @unique
+  name           String
+  passwordHash   String    @map("password_hash")
+  role           String    @default("staff")
+  isActive       Boolean   @default(true) @map("is_active")
+  tokenVersion   Int       @default(0) @map("token_version")
+  onShift        Boolean   @default(false) @map("on_shift")
+  ticketLimit    Int       @default(20) @map("ticket_limit")
+  /// Maintained by a trigger on tickets; never written by application code.
+  openCount      Int       @default(0) @map("open_count")
+  languages      String[]  @default(["en"])
+  lastAssignedAt DateTime? @map("last_assigned_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  memberships   TeamMember[]
+  refreshTokens RefreshToken[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Team {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String   @unique
+  timeZone        String   @map("time_zone")
+  workdays        Int[]
+  workStartMin    Int      @map("work_start_min")
+  workEndMin      Int      @map("work_end_min")
+  defaultLanguage String   @default("en") @map("default_language")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  members      TeamMember[]
+  holidays     TeamHoliday[]
+  mailboxes    Mailbox[]
+  routingRules RoutingRule[]
+  tickets      Ticket[]
+
+  @@map("teams")
+}
+
+model TeamHoliday {
+  id     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId String   @map("team_id") @db.Uuid
+  date   DateTime @db.Date
+  name   String
+  team   Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, date])
+  @@map("team_holidays")
+}
+
+model TeamMember {
+  teamId String @map("team_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  role   String @default("agent")
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+model Mailbox {
+  address       String @id
+  defaultTeamId String @map("default_team_id") @db.Uuid
+  defaultTeam   Team   @relation(fields: [defaultTeamId], references: [id])
+
+  @@map("mailboxes")
+}
+
+model RoutingRule {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  position        Int
+  enabled         Boolean  @default(true)
+  recipient       String?
+  subjectKeywords String[] @default([]) @map("subject_keywords")
+  language        String?
+  teamId          String   @map("team_id") @db.Uuid
+  priority        String?
+  team            Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([position])
+  @@map("routing_rules")
+}
+
+model Customer {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  tickets   Ticket[]
+
+  @@map("customers")
+}
+
+model Ticket {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  number              BigInt    @unique @default(dbgenerated("nextval('ticket_number_seq')"))
+  subject             String
+  status              String    @default("new")
+  priority            String    @default("normal")
+  language            String    @default("en")
+  source              String    @default("email")
+  teamId              String    @map("team_id") @db.Uuid
+  customerId          String    @map("customer_id") @db.Uuid
+  assigneeId          String?   @map("assignee_id") @db.Uuid
+  mailboxAddress      String?   @map("mailbox_address")
+  mergedIntoId        String?   @map("merged_into_id") @db.Uuid
+  followUpOfId        String?   @map("follow_up_of_id") @db.Uuid
+  version             Int       @default(1)
+  messageSeq          Int       @default(0) @map("message_seq")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @default(now()) @map("updated_at") @db.Timestamptz(3)
+  queuedAt            DateTime? @map("queued_at") @db.Timestamptz(3)
+  firstRespondedAt    DateTime? @map("first_responded_at") @db.Timestamptz(3)
+  resolvedAt          DateTime? @map("resolved_at") @db.Timestamptz(3)
+  closedAt            DateTime? @map("closed_at") @db.Timestamptz(3)
+  lastCustomerMsgAt   DateTime? @map("last_customer_msg_at") @db.Timestamptz(3)
+  lastPublicReplyAt   DateTime? @map("last_public_reply_at") @db.Timestamptz(3)
+  firstResponseDueAt  DateTime? @map("first_response_due_at") @db.Timestamptz(3)
+  firstResponseWarnAt DateTime? @map("first_response_warn_at") @db.Timestamptz(3)
+  resolutionDueAt     DateTime? @map("resolution_due_at") @db.Timestamptz(3)
+  resolutionWarnAt    DateTime? @map("resolution_warn_at") @db.Timestamptz(3)
+  slaPaused           Boolean   @default(false) @map("sla_paused")
+  nextDueAt           DateTime? @map("next_due_at") @db.Timestamptz(3)
+  firstResponseBreached Boolean @default(false) @map("first_response_breached")
+  resolutionBreached  Boolean   @default(false) @map("resolution_breached")
+
+  team       Team       @relation(fields: [teamId], references: [id])
+  customer   Customer   @relation(fields: [customerId], references: [id])
+  messages   Message[]
+  events     TicketEvent[]
+  pauses     SlaPause[]
+  tokens     TicketAccessToken[]
+  survey     Survey?
+  outbound   OutboundEmail[]
+
+  @@map("tickets")
+}
+
+model Message {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId         String    @map("ticket_id") @db.Uuid
+  seq              Int
+  kind             String
+  direction        String
+  authorKind       String    @map("author_kind")
+  authorUserId     String?   @map("author_user_id") @db.Uuid
+  authorName       String?   @map("author_name")
+  body             String
+  rfcMessageId     String?   @map("rfc_message_id")
+  inboundMessageId String?   @unique @map("inbound_message_id") @db.Uuid
+  autoKind         String?   @map("auto_kind")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  releasedAt       DateTime? @map("released_at") @db.Timestamptz(3)
+
+  ticket      Ticket       @relation(fields: [ticketId], references: [id])
+  attachments Attachment[]
+
+  @@unique([ticketId, seq])
+  @@map("messages")
+}
+
+model Attachment {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  messageId   String   @map("message_id") @db.Uuid
+  filename    String
+  contentType String   @map("content_type")
+  size        Int
+  data        Bytes
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  message     Message  @relation(fields: [messageId], references: [id])
+
+  @@index([messageId])
+  @@map("attachments")
+}
+
+model InboundMessage {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mailboxAddress String   @map("mailbox_address")
+  rfcMessageId   String   @map("rfc_message_id")
+  raw            Bytes
+  state          String   @default("pending")
+  error          String?
+  ticketId       String?  @map("ticket_id") @db.Uuid
+  receivedAt     DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  @@unique([mailboxAddress, rfcMessageId])
+  @@map("inbound_messages")
+}
+
+model OutboundEmail {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId     String    @map("ticket_id") @db.Uuid
+  messageId    String?   @unique @map("message_id") @db.Uuid
+  purpose      String
+  toEmail      String    @map("to_email")
+  subject      String
+  bodyText     String    @map("body_text")
+  rfcMessageId String    @unique @map("rfc_message_id")
+  inReplyTo    String?   @map("in_reply_to")
+  referencesHdr String?  @map("references_hdr")
+  autoGenerated Boolean  @default(false) @map("auto_generated")
+  state        String    @default("scheduled")
+  sendAfter    DateTime  @map("send_after") @db.Timestamptz(3)
+  leaseUntil   DateTime? @map("lease_until") @db.Timestamptz(3)
+  attempts     Int       @default(0)
+  lastError    String?   @map("last_error")
+  sentAt       DateTime? @map("sent_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId])
+  @@map("outbound_emails")
+}
+
+model TicketEvent {
+  id          BigInt   @id @default(autoincrement())
+  ticketId    String   @map("ticket_id") @db.Uuid
+  type        String
+  actorKind   String   @map("actor_kind")
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  actorLabel  String?  @map("actor_label")
+  data        Json     @default("{}")
+  createdAt   DateTime @map("created_at") @db.Timestamptz(3)
+  ticket      Ticket   @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId, id])
+  @@map("ticket_events")
+}
+
+model SlaPause {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId  String    @map("ticket_id") @db.Uuid
+  startedAt DateTime  @map("started_at") @db.Timestamptz(3)
+  endedAt   DateTime? @map("ended_at") @db.Timestamptz(3)
+  ticket    Ticket    @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId])
+  @@map("sla_pauses")
+}
+
+model TicketAccessToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId  String    @map("ticket_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  ticket    Ticket    @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId])
+  @@map("ticket_access_tokens")
+}
+
+model Survey {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId  String    @unique @map("ticket_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  rating    Int?
+  comment   String?
+  ratedAt   DateTime? @map("rated_at") @db.Timestamptz(3)
+  createdAt DateTime  @map("created_at") @db.Timestamptz(3)
+  ticket    Ticket    @relation(fields: [ticketId], references: [id])
+
+  @@map("surveys")
+}
+
+model RefreshToken {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  familyId   String    @map("family_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt     DateTime? @map("used_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Notification {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  ticketId  String?   @map("ticket_id") @db.Uuid
+  kind      String
+  data      Json      @default("{}")
+  createdAt DateTime  @map("created_at") @db.Timestamptz(3)
+  readAt    DateTime? @map("read_at") @db.Timestamptz(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Job {
+  id          BigInt    @id @default(autoincrement())
+  kind        String
+  ref         String
+  dedupeKey   String    @unique @map("dedupe_key")
+  runAt       DateTime  @map("run_at") @db.Timestamptz(3)
+  status      String    @default("pending")
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(8) @map("max_attempts")
+  lastError   String?   @map("last_error")
+  payload     Json      @default("{}")
+  createdAt   DateTime  @map("created_at") @db.Timestamptz(3)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
+
+  @@map("jobs")
+}
+
+model AppClock {
+  id         Int    @id @default(1)
+  offsetMs   BigInt @default(0) @map("offset_ms")
+  generation Int    @default(0)
+
+  @@map("app_clock")
+}
+
+model SeedRun {
+  id         Int      @id @default(1)
+  profile    String
+  randomSeed Int      @map("random_seed")
+  finishedAt DateTime @map("finished_at") @db.Timestamptz(3)
+
+  @@map("seed_runs")
+}
