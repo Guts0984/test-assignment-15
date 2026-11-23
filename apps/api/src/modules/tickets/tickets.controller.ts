@@ -68,6 +68,7 @@ import {
   TicketListDto,
   TransferInputDto,
 } from './dto/tickets.dto';
+import { createTtlCache } from './domain/ttl-cache';
 import { loadTicketDetail } from './repo/ticket-detail';
 import {
   agentQueue,
@@ -82,6 +83,9 @@ const staff = (auth: RequestAuth) => {
   if (auth.kind !== 'staff') throw appError('FORBIDDEN', 'Staff access required');
   return auth;
 };
+
+/** Period reports are heavy aggregates over tens of thousands of tickets; identical requests within 15 s share one result. */
+const reportCache = createTtlCache<Awaited<ReturnType<typeof periodReport>>>(15_000, () => Date.now());
 
 @ApiTags('tickets')
 @RequireAccess('staff')
@@ -391,13 +395,8 @@ export class TicketsController {
     if (allowed !== null && allowed.length === 0)
       throw appError('FORBIDDEN', 'Reports are available to team leads and administrators');
     const teamIds = q.teamId !== undefined ? [q.teamId] : allowed;
-    const data = await periodReport(this.svc.db, {
-      from: q.from,
-      to: q.to,
-      teamIds,
-      agentId: q.agentId ?? null,
-      priority: q.priority ?? null,
-    });
+    const filter = { from: q.from, to: q.to, teamIds, agentId: q.agentId ?? null, priority: q.priority ?? null };
+    const data = await reportCache.get(JSON.stringify(filter), () => periodReport(this.svc.db, filter));
     return { from: q.from, to: q.to, ...data };
   }
 

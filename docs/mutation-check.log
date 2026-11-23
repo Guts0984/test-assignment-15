@@ -1,0 +1,318 @@
+=== MUTATION: a1: ticket access guard allows every ticket (apps/api/src/modules/tickets/tickets.service.ts)
+
+ RUN  v3.2.7 /home/dariy/Desktop/projects/test-assignment-15/apps/api
+
+ ❯ test/adversarial/access.adv.spec.ts (12 tests | 4 failed) 4019ms
+   × IDOR: staff cannot touch tickets of other teams (404, nothing changes) > every ticket route answers 404 for an agent or lead of another team 550ms
+     → expected 200 to be 404 // Object.is equality
+   × IDOR: staff cannot touch tickets of other teams (404, nothing changes) > a foreign ticket looks exactly like a missing one (no existence oracle) 79ms
+     → expected [ 200, …(1) ] to deeply equal [ 404, …(1) ]
+   × IDOR: staff cannot touch tickets of other teams (404, nothing changes) > search, queues and reports never include other teams 33ms
+     → expected [ …(2) ] to deeply equal [ Array(1) ]
+   × IDOR: staff cannot touch tickets of other teams (404, nothing changes) > attachments of another team are not downloadable 32ms
+     → expected 200 to be 404 // Object.is equality
+   ✓ IDOR: staff cannot touch tickets of other teams (404, nothing changes) > admin sees everything; a lead cannot read notes of another team through merge or transfer tricks 68ms
+   ✓ IDOR: staff cannot touch tickets of other teams (404, nothing changes) > mass assignment: extra fields in commands are rejected, not applied 26ms
+   ✓ internal notes never reach customers (REST, portal, email, search) > has no path from a customer link to a note 64ms
+   ✓ magic links: one ticket, expire, revoked on merge > a link for ticket A cannot read or write ticket B and cannot use staff routes 228ms
+   ✓ magic links: one ticket, expire, revoked on merge > guessed, truncated, altered and query-string tokens fail; the token is not accepted as a bearer 45ms
+   ✓ magic links: one ticket, expire, revoked on merge > expired links answer 410 LINK_EXPIRED and revoked links 410 LINK_REVOKED 67ms
+   ✓ magic links: one ticket, expire, revoked on merge > after a merge the duplicate link stops working while the main ticket link keeps working  497ms
+   ✓ magic links: one ticket, expire, revoked on merge > the web form never hands out a link, so submitting with a victim email gives the attacker nothing 73ms
+ ✓ test/realtime.int.spec.ts (11 tests) 6639ms
+   ✓ connection authentication (INV-11 for sockets) > rejects missing, garbage, expired-looking and forged credentials on both api copies  568ms
+   ✓ INV-10a: live updates reach the other api copy in under a second > a new ticket created through copy A is seen by the lead on copy B, and status changes by the agent on copy A too  683ms
+   ✓ INV-10a: live updates reach the other api copy in under a second > the agent sees tickets assigned to them live through their user room  323ms
+   ✓ INV-10d / INV-11: events and subscriptions are authorized per ticket > another team never receives events, cannot subscribe, and a customer link only sees its own ticket in customer form  1076ms
+   ✓ INV-10d / INV-11: events and subscriptions are authorized per ticket > a team change or merge revokes live access: staff must re-subscribe, the old customer link socket is disconnected  599ms
+   ✓ INV-10b: who is viewing and typing > shows each other across api copies, marks typing, and drops a closed tab at once  360ms
+   ✓ INV-10b: who is viewing and typing > an abrupt connection drop (no goodbye) disappears within the TTL, by the reaper  583ms
+   ✓ INV-10c: catch-up after reconnect > a reconnecting client gets the messages it missed, notes included for staff, in order  310ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/adversarial/access.adv.spec.ts > IDOR: staff cannot touch tickets of other teams (404, nothing changes) > every ticket route answers 404 for an agent or lead of another team
+AssertionError: expected 200 to be 404 // Object.is equality
+
+- Expected
++ Received
+
+- 404
++ 200
+
+ ❯ test/adversarial/access.adv.spec.ts:88:26
+     86|       ];
+     87|       for (const r of await Promise.all(calls)) {
+     88|         expect(r.status).toBe(404);
+       |                          ^
+     89|         expect(r.text).not.toContain('TEAM-PRIVATE-TEXT');
+     90|       }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/adversarial/access.adv.spec.ts > IDOR: staff cannot touch tickets of other teams (404, nothing changes) > a foreign ticket looks exactly like a missing one (no existence oracle)
+AssertionError: expected [ 200, …(1) ] to deeply equal [ 404, …(1) ]
+
+- Expected
++ Received
+
+  [
+-   404,
+-   "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Ticket not found\"}}",
++   200,
++   "{\"ticket\":{\"id\":\"6f55484c-ec47-4d56-ae35-32673e9fbb82\",\"number\":100000,\"subject\":\"Printer jammed\",\"status\":\"resolved\",\"priority\":\"urgent\",\"language\":\"en\",\"teamId\":\"bb4b67a8-ce28-4abf-b655-d00c44ba2a2e\",\"assigneeId\":null,\"assigneeName\":null,\"customerName\":\"cust-odi24eqv\",\"customerEmail\":\"cust-odi24eqv@customer.test\",\"createdAt\":\"2026-11-23T14:47:01.832Z\",\"updatedAt\":\"2026-11-23T14:47:02.879Z\",\"nextDueAt\":null,\"firstResponseDueAt\":\"2026-11-23T15:47:01.832Z\",\"resolutionDueAt\":\"2026-11-23T18:47:01.832Z\",\"slaPaused\":false,\"firstRespondedAt\":\"2026-11-23T14:47:02.879Z\",\"firstResponseBreached\":false,\"resolutionBreached\":false,\"version\":8,\"customerId\":\"5d2d9f00-7796-4b1d-82dc-748b71236126\",\"mergedIntoId\":null,\"mergedIntoNumber\":null,\"followUpOfId\":null,\"followUpOfNumber\":null,\"resolvedAt\":\"2026-11-23T14:47:02.870Z\",\"closedAt\":null,\"messageSeq\":4},\"messages\":[{\"id\":\"17253762-047e-4ee2-8726-d3186e27ceca\",\"seq\":1,\"kind\":\"public\",\"direction\":\"inbound\",\"authorKind\":\"customer\",\"authorName\":\"cust-odi24eqv\",\"body\":\"TEAM-PRIVATE-TEXT\",\"createdAt\":\"2026-11-23T14:47:01.832Z\",\"releasedAt\":null,\"cancelledAt\":null,\"sendAfter\":null,\"sendState\":null,\"autoKind\":null,\"originTicketId\":null,\"attachments\":[]},{\"id\":\"291cd914-8e99-4c17-9b3e-728c6577bc85\",\"seq\":2,\"kind\":\"note\",\"direction\":\"internal\",\"authorKind\":\"agent\",\"authorName\":\"Test User\",\"body\":\"NOTE-PRIVATE\",\"createdAt\":\"2026-11-23T14:47:02.282Z\",\"releasedAt\":null,\"cancelledAt\":null,\"sendAfter\":null,\"sendState\":null,\"autoKind\":null,\"originTicketId\":null,\"attachments\":[]},{\"id\":\"6c0f8978-61dd-49ef-8a7b-b11387d46734\",\"seq\":3,\"kind\":\"note\",\"direction\":\"internal\",\"authorKind\":\"agent\",\"authorName\":\"Test User\",\"body\":\"x\",\"createdAt\":\"2026-11-23T14:47:02.851Z\",\"releasedAt\":null,\"cancelledAt\":null,\"sendAfter\":null,\"sendState\":null,\"autoKind\":null,\"originTicketId\":null,\"attachments\":[]},{\"id\":\"2defc126-1a10-4c58-b0f5-d7fdce7fb2ea\",\"seq\":4,\"kind\":\"public\",\"direction\":\"outbound\",\"authorKind\":\"agent\",\"authorName\":\"Test User\",\"body\":\"x\",\"createdAt\":\"2026-11-23T14:47:02.879Z\",\"releasedAt\":null,\"cancelledAt\":null,\"sendAfter\":\"2026-11-23T14:47:12.879Z\",\"sendState\":\"scheduled\",\"autoKind\":null,\"originTicketId\":null,\"attachments\":[]}],\"events\":[{\"id\":\"1\",\"type\":\"created\",\"actorKind\":\"customer\",\"actorName\":null,\"data\":{\"source\":\"email\",\"teamId\":\"7c106a91-f719-4e99-a107-caafa4707dd2\",\"priority\":\"normal\"},\"createdAt\":\"2026-11-23T14:47:01.832Z\"},{\"id\":\"2\",\"type\":\"taken\",\"actorKind\":\"agent\",\"actorName\":\"Test User\",\"data\":{\"by\":\"6d1c1053-38a0-45aa-afcc-ff75d15a94ee\"},\"createdAt\":\"2026-11-23T14:47:02.204Z\"},{\"id\":\"3\",\"type\":\"note\",\"actorKind\":\"agent\",\"actorName\":\"Test User\",\"data\":{\"messageId\":\"291cd914-8e99-4c17-9b3e-728c6577bc85\"},\"createdAt\":\"2026-11-23T14:47:02.282Z\"},{\"id\":\"7\",\"type\":\"note\",\"actorKind\":\"agent\",\"actorName\":\"Test User\",\"data\":{\"messageId\":\"6c0f8978-61dd-49ef-8a7b-b11387d46734\"},\"createdAt\":\"2026-11-23T14:47:02.851Z\"},{\"id\":\"8\",\"type\":\"team_changed\",\"actorKind\":\"agent\",\"actorName\":\"Test User\",\"data\":{\"to\":\"bb4b67a8-ce28-4abf-b655-d00c44ba2a2e\",\"from\":\"7c106a91-f719-4e99-a107-caafa4707dd2\",\"previousAssigneeId\":\"6d1c1053-38a0-45aa-afcc-ff75d15a94ee\"},\"createdAt\":\"2026-11-23T14:47:02.850Z\"},{\"id\":\"9\",\"type\":\"status_changed\",\"actorKind\":\"agent\",\"actorName\":\"Test User\",\"data\":{\"to\":\"resolved\",\"from\":\"new\"},\"createdAt\":\"2026-11-23T14:47:02.870Z\"},{\"id\":\"11\",\"type\":\"priority_changed\",\"actorKind\":\"agent\",\"actorName\":\"Test User\",\"data\":{\"to\":\"urgent\",\"from\":\"normal\"},\"createdAt\":\"2026-11-23T14:47:02.890Z\"},{\"id\":\"12\",\"type\":\"reply\",\"actorKind\":\"agent\",\"actorName\":\"Test User\",\"data\":{\"messageId\":\"2defc126-1a10-4c58-b0f5-d7fdce7fb2ea\"},\"createdAt\":\"2026-11-23T14:47:02.879Z\"}],\"serverTime\":\"2026-11-23T14:47:03.331Z\"}",
+  ]
+
+ ❯ test/adversarial/access.adv.spec.ts:107:51
+    105|     const missing = await w.b.agent.client.get(`${T}/3f2504e0-4f89-41d…
+    106|     const strip = (j: unknown) => JSON.stringify(j, (k, v) => (k === '…
+    107|     expect([foreign.status, strip(foreign.json)]).toEqual([missing.sta…
+       |                                                   ^
+    108|   });
+    109| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/adversarial/access.adv.spec.ts > IDOR: staff cannot touch tickets of other teams (404, nothing changes) > search, queues and reports never include other teams
+AssertionError: expected [ …(2) ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
++   "6f55484c-ec47-4d56-ae35-32673e9fbb82",
+    "22da0e8b-2755-4b0b-a76d-b646ed28f9c7",
+  ]
+
+ ❯ test/adversarial/access.adv.spec.ts:114:42
+    112|       items: { id: string; teamId: string }[];
+    113|     };
+    114|     expect(found.items.map((i) => i.id)).toEqual([w.b.ticket.ticketId]…
+       |                                          ^
+    115|     expect(found.items.every((i) => i.teamId === w.b.team.id)).toBe(tr…
+    116|     const un = (await w.b.agent.client.get(`${T}/unassigned`)).json as…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/adversarial/access.adv.spec.ts > IDOR: staff cannot touch tickets of other teams (404, nothing changes) > attachments of another team are not downloadable
+AssertionError: expected 200 to be 404 // Object.is equality
+
+- Expected
++ Received
+
+- 404
++ 200
+
+ ❯ test/adversarial/access.adv.spec.ts:142:82
+    140|       },
+    141|     });
+    142|     expect((await w.b.agent.client.get(`/api/v1/attachments/${att.id}`…
+       |                                                                                  ^
+    143|     expect((await w.a.agent.client.get(`/api/v1/attachments/${att.id}`…
+    144|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  4 failed | 19 passed (23)
+   Start at  16:46:52
+   Duration  15.15s (transform 1.73s, setup 85ms, collect 7.86s, tests 10.66s, environment 1ms, prepare 546ms)
+
+RESULT: tests FAIL as required (protection is covered)
+=== MUTATION: a2: admin role check removed from the auth guard (apps/api/src/common/auth/auth.guard.ts)
+
+ RUN  v3.2.7 /home/dariy/Desktop/projects/test-assignment-15/apps/api
+
+ ❯ test/adversarial/tokens.adv.spec.ts (9 tests | 1 failed) 2240ms
+   ✓ access token attacks > accepts a genuine token (control)  388ms
+   ✓ access token attacks > rejects a token signed with the wrong secret 50ms
+   ✓ access token attacks > rejects a tampered payload (privilege escalation to admin) with the original signature 110ms
+   ✓ access token attacks > rejects alg:none, other algorithms and an empty signature 132ms
+   ✓ access token attacks > rejects expired, not-yet-valid and claim-less tokens 48ms
+   ✓ access token attacks > rejects a wrong issuer or audience 30ms
+   ✓ access token attacks > rejects a valid-looking token for a user that does not exist, and one with a stale version 37ms
+   × access token attacks > a staff token cannot claim to be admin by role claim alone: the database role decides 61ms
+     → expected 200 to be 403 // Object.is equality
+   ✓ access token attacks > rejects malformed Authorization headers 29ms
+ ❯ test/adversarial/route-table.adv.spec.ts (7 tests | 1 failed) 3136ms
+   ✓ route table (every documented operation) > documents the operations and declares an access level on every single one 8ms
+   ✓ route table (every documented operation) > protected routes return 401 without credentials, in the shared error format 231ms
+   × route table (every documented operation) > admin routes return 403 for an agent token and are reachable for an admin 54ms
+     → agent GET /api/v1/admin/teams: expected 200 to be 403 // Object.is equality
+   ✓ route table (every documented operation) > customer-link routes reject staff tokens and invalid links 29ms
+   ✓ route table (every documented operation) > staff routes work for agents and never answer 401/403 to them 282ms
+   ✓ route table (every documented operation) > the test clock route does not exist in the default profile (flag off) 16ms
+   ✓ route table (every documented operation) > unknown routes and unsupported methods use the shared error body, never an HTML page 19ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/adversarial/route-table.adv.spec.ts > route table (every documented operation) > admin routes return 403 for an agent token and are reachable for an admin
+AssertionError: agent GET /api/v1/admin/teams: expected 200 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 200
+
+ ❯ test/adversarial/route-table.adv.spec.ts:73:63
+     71|     for (const o of ops.filter((x) => x.access === 'admin')) {
+     72|       const forbidden = await call(agent.client, o);
+     73|       expect(forbidden.status, `agent ${o.method} ${o.path}`).toBe(403…
+       |                                                               ^
+     74|       expect((forbidden.json as { error: { code: string } }).error.cod…
+     75|       const allowed = await call(admin.client, o);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/adversarial/tokens.adv.spec.ts > access token attacks > a staff token cannot claim to be admin by role claim alone: the database role decides
+AssertionError: expected 200 to be 403 // Object.is equality
+
+- Expected
++ Received
+
+- 403
++ 200
+
+ ❯ test/adversarial/tokens.adv.spec.ts:162:22
+    160|       headers: { authorization: `Bearer ${t}` },
+    161|     });
+    162|     expect(r.status).toBe(403);
+       |                      ^
+    163|   });
+    164| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 14 passed (16)
+   Start at  16:47:08
+   Duration  15.18s (transform 1.66s, setup 83ms, collect 8.45s, tests 5.38s, environment 1ms, prepare 600ms)
+
+RESULT: tests FAIL as required (protection is covered)
+=== MUTATION: b: strict() removed from the note input (mass assignment) and the length cap from reply bodies (packages/shared/src/schemas/inputs.ts)
+
+ RUN  v3.2.7 /home/dariy/Desktop/projects/test-assignment-15/apps/api
+
+ ❯ test/adversarial/access.adv.spec.ts (12 tests | 1 failed) 2912ms
+   ✓ IDOR: staff cannot touch tickets of other teams (404, nothing changes) > every ticket route answers 404 for an agent or lead of another team 181ms
+   ✓ IDOR: staff cannot touch tickets of other teams (404, nothing changes) > a foreign ticket looks exactly like a missing one (no existence oracle) 23ms
+   ✓ IDOR: staff cannot touch tickets of other teams (404, nothing changes) > search, queues and reports never include other teams 104ms
+   ✓ IDOR: staff cannot touch tickets of other teams (404, nothing changes) > attachments of another team are not downloadable 43ms
+   ✓ IDOR: staff cannot touch tickets of other teams (404, nothing changes) > admin sees everything; a lead cannot read notes of another team through merge or transfer tricks 55ms
+   × IDOR: staff cannot touch tickets of other teams (404, nothing changes) > mass assignment: extra fields in commands are rejected, not applied 57ms
+     → expected 201 to be 400 // Object.is equality
+   ✓ internal notes never reach customers (REST, portal, email, search) > has no path from a customer link to a note 46ms
+   ✓ magic links: one ticket, expire, revoked on merge > a link for ticket A cannot read or write ticket B and cannot use staff routes 77ms
+   ✓ magic links: one ticket, expire, revoked on merge > guessed, truncated, altered and query-string tokens fail; the token is not accepted as a bearer 34ms
+   ✓ magic links: one ticket, expire, revoked on merge > expired links answer 410 LINK_EXPIRED and revoked links 410 LINK_REVOKED 33ms
+   ✓ magic links: one ticket, expire, revoked on merge > after a merge the duplicate link stops working while the main ticket link keeps working  443ms
+   ✓ magic links: one ticket, expire, revoked on merge > the web form never hands out a link, so submitting with a victim email gives the attacker nothing 66ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/adversarial/access.adv.spec.ts > IDOR: staff cannot touch tickets of other teams (404, nothing changes) > mass assignment: extra fields in commands are rejected, not applied
+AssertionError: expected 201 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 201
+
+ ❯ test/adversarial/access.adv.spec.ts:170:22
+    168|       isInternal: false,
+    169|     });
+    170|     expect(n.status).toBe(400);
+       |                      ^
+    171|   });
+    172| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 passed (12)
+   Start at  16:47:24
+   Duration  11.21s (transform 1.32s, setup 41ms, collect 3.21s, tests 2.91s, environment 1ms, prepare 291ms)
+
+RESULT: tests FAIL as required (protection is covered)
+=== MUTATION: c: agent limit check removed from the load trigger (packages/core/prisma/migrations/20260101000100_guards/migration.sql)
+
+ RUN  v3.2.7 /home/dariy/Desktop/projects/test-assignment-15/packages/core
+
+ ❯ test/schema-constraints.int.spec.ts (24 tests | 2 failed) 3345ms
+   ✓ agent load trigger (invariant 1 at the database level) > counts tickets on assign, status change and reassign  315ms
+   × agent load trigger (invariant 1 at the database level) > refuses to exceed the limit, on insert and on update 114ms
+     → expected AGENT_AT_LIMIT: expected null not to be null
+   × agent load trigger (invariant 1 at the database level) > never exceeds the limit under 80 concurrent assignments to one agent 987ms
+     → expected 80 to be 7 // Object.is equality
+   ✓ agent load trigger (invariant 1 at the database level) > keeps counts exact when tickets swap between two agents concurrently (no deadlock, no drift)  405ms
+   ✓ agent load trigger (invariant 1 at the database level) > rejects a negative counter and a negative limit at the constraint level 139ms
+   ✓ merge guards (invariant 7 at the database level) > merges a duplicate into the main ticket 61ms
+   ✓ merge guards (invariant 7 at the database level) > rejects self-merge 40ms
+   ✓ merge guards (invariant 7 at the database level) > rejects merging tickets of different customers 57ms
+   ✓ merge guards (invariant 7 at the database level) > rejects A -> B after B -> A (no cycles) and merging an already merged ticket again 72ms
+   ✓ merge guards (invariant 7 at the database level) > rejects a chain: merging into a ticket that was itself merged away 63ms
+   ✓ merge guards (invariant 7 at the database level) > only one of two simultaneous opposite merges wins and no cycle appears 239ms
+   ✓ merge guards (invariant 7 at the database level) > a merged ticket must be closed and unassigned 44ms
+   ✓ uniqueness backing invariants 4 and 8 > deduplicates inbound deliveries per mailbox and Message-ID 44ms
+   ✓ uniqueness backing invariants 4 and 8 > allows one message per RFC Message-ID and per (ticket, seq) 97ms
+   ✓ uniqueness backing invariants 4 and 8 > allows one survey per ticket, with a rating from 1 to 5 only 110ms
+   ✓ uniqueness backing invariants 4 and 8 > allows one job per dedupe key, so one warning and one breach per ticket and target 47ms
+   ✓ uniqueness backing invariants 4 and 8 > outbound email has a unique RFC Message-ID and a valid state machine value 93ms
+   ✓ uniqueness backing invariants 4 and 8 > assigns increasing ticket numbers starting at 100000 68ms
+   ✓ uniqueness backing invariants 4 and 8 > rejects out-of-domain values and non-lowercase emails 108ms
+   ✓ uniqueness backing invariants 4 and 8 > caps attachment size at 10 MB 81ms
+   ✓ full-text search and indexes > finds messages with the simple configuration and customers by trigram 67ms
+   ✓ full-text search and indexes > treats hostile search text as data, never as SQL or tsquery syntax errors 37ms
+   ✓ full-text search and indexes > has the indexes the queue, report and job scans rely on 19ms
+   ✓ test clock row > exists exactly once and notifies listeners on update 11ms
+ ✓ test/assignment.int.spec.ts (7 tests) 14372ms
+   ✓ INV-1: the agent limit is never exceeded and load stays level > 500 tickets, 10 agents with limit 20, three runners at once: everyone has exactly 20, 300 wait in the queue  9779ms
+   ✓ INV-1: the agent limit is never exceeded and load stays level > spreads work evenly: loads never differ by more than one while capacity lasts  1998ms
+   ✓ INV-2 in the worker: auto-assignment racing "take it" > every ticket ends with exactly one owner and exact counters while takers and runners fight  1691ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/schema-constraints.int.spec.ts > agent load trigger (invariant 1 at the database level) > refuses to exceed the limit, on insert and on update
+AssertionError: expected AGENT_AT_LIMIT: expected null not to be null
+ ❯ expectDbError test/schema-constraints.int.spec.ts:24:37
+     22|     (err: unknown) => err,
+     23|   );
+     24|   expect(e, `expected ${code}`).not.toBeNull();
+       |                                     ^
+     25|   expect(dbBusinessError(e)).toBe(code);
+     26| };
+ ❯ test/schema-constraints.int.spec.ts:56:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/schema-constraints.int.spec.ts > agent load trigger (invariant 1 at the database level) > never exceeds the limit under 80 concurrent assignments to one agent
+AssertionError: expected 80 to be 7 // Object.is equality
+
+- Expected
++ Received
+
+- 7
++ 80
+
+ ❯ test/schema-constraints.int.spec.ts:82:21
+     80|     );
+     81|     const okCount = results.filter((r) => r.status === 'fulfilled').le…
+     82|     expect(okCount).toBe(7);
+       |                     ^
+     83|     expect(
+     84|       results
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 29 passed (31)
+   Start at  16:47:37
+   Duration  20.13s (transform 987ms, setup 43ms, collect 2.87s, tests 17.72s, environment 1ms, prepare 537ms)
+
+RESULT: tests FAIL as required (protection is covered)

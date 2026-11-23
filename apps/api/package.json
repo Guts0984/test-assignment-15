@@ -8,7 +8,9 @@
     "test": "vitest run && vitest run -c vitest.serial.config.ts",
     "start": "node dist/main.js",
     "seed": "node dist/cli/migrate-and-seed.js",
-    "openapi:emit": "node --env-file=../../.env dist/cli/emit-openapi.js"
+    "openapi:emit": "node --env-file=../../.env dist/cli/emit-openapi.js",
+    "test:stack": "vitest run -c vitest.stack.config.ts",
+    "test:perf": "vitest run -c vitest.perf.config.ts"
   },
   "dependencies": {
     "@helpdesk/core": "workspace:*",

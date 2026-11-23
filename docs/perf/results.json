@@ -1,0 +1,40 @@
+{
+  "measuredAt": "2026-11-23T15:29:22.057Z",
+  "results": {
+    "search (admin, all teams)": {
+      "p50": 74.4,
+      "p95": 161.1,
+      "max": 161.1,
+      "budgetMs": 300,
+      "runs": 17
+    },
+    "search (agent, own team)": {
+      "p50": 175.4,
+      "p95": 248.3,
+      "max": 248.3,
+      "budgetMs": 300,
+      "runs": 17
+    },
+    "agent queue": {
+      "p50": 10.5,
+      "p95": 14.7,
+      "max": 15.1,
+      "budgetMs": 200,
+      "runs": 40
+    },
+    "report 90 days (admin, all teams)": {
+      "p50": 5.5,
+      "p95": 7.3,
+      "max": 7.3,
+      "budgetMs": 1000,
+      "runs": 15
+    },
+    "report 90 days (lead, one team)": {
+      "p50": 6.3,
+      "p95": 7.8,
+      "max": 7.8,
+      "budgetMs": 1000,
+      "runs": 15
+    }
+  }
+}

@@ -1,8 +1,18 @@
-# Full stack is completed in the compose block; this skeleton has the stateful services.
+# cp .env.example .env && docker compose up --build
+x-app: &app
+  build: { context: ., dockerfile: infra/docker/Dockerfile, target: app }
+  env_file: .env
+  restart: unless-stopped
+  depends_on:
+    migrate: { condition: service_completed_successfully }
+    redis: { condition: service_healthy }
+
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    # Parallel queries and VACUUM use shared memory; Docker's 64 MB default is too small for the 3M-message seed.
+    shm_size: 1gb
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -32,6 +42,76 @@ services:
       interval: 3s
       timeout: 3s
       retries: 30
+
+  # One-shot: applies migrations and seeds (idempotent). The first start with the full seed takes several minutes.
+  migrate:
+    build: { context: ., dockerfile: infra/docker/Dockerfile, target: app }
+    env_file: .env
+    command: ['node', 'apps/api/dist/cli/migrate-and-seed.js']
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: 'no'
+
+  api-1:
+    <<: *app
+    environment: { API_INSTANCE_ID: api-1 }
+    command: ['node', 'apps/api/dist/main.js']
+    healthcheck:
+      test: ['CMD-SHELL', 'node -e "fetch(\"http://127.0.0.1:3000/api/v1/health\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  api-2:
+    <<: *app
+    environment: { API_INSTANCE_ID: api-2 }
+    command: ['node', 'apps/api/dist/main.js']
+    healthcheck:
+      test: ['CMD-SHELL', 'node -e "fetch(\"http://127.0.0.1:3000/api/v1/health\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  worker:
+    <<: *app
+    command: ['node', 'apps/worker/dist/main.js']
+    deploy:
+      replicas: ${WORKER_REPLICAS:-1}
+
+  mail-stub:
+    <<: *app
+    command: ['node', 'apps/mail-stub/dist/main.js']
+    ports:
+      - '${MAIL_STUB_HOST_PORT:-8025}:8025'
+    depends_on:
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD-SHELL', 'node -e "fetch(\"http://127.0.0.1:8025/health\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  web:
+    build: { context: ., dockerfile: infra/docker/Dockerfile, target: web }
+    env_file: .env
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'node -e "fetch(\"http://127.0.0.1:3000/login\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - '${HTTP_PORT:-8080}:80'
+    depends_on:
+      api-1: { condition: service_healthy }
+      api-2: { condition: service_healthy }
+      web: { condition: service_healthy }
 
 volumes:
   pgdata:

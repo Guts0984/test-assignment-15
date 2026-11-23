@@ -153,7 +153,7 @@ export const runSeed = async (db: Db, o: SeedOptions): Promise<SeedOutcome> => {
     },
     { maxWaitMs: 60_000, timeoutMs: 3 * 3_600_000 },
   ).then(async (outcome) => {
-    await db.$executeRawUnsafe('ANALYZE');
+    await db.$executeRawUnsafe('VACUUM (ANALYZE)'); // sets visibility bits so scans after the seed are fast
     return outcome;
   });
 };

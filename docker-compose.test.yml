@@ -1,0 +1,21 @@
+# Test profile: docker compose -f docker-compose.yml -f docker-compose.test.yml up --build -d
+# Enables the shared test clock (never in the default profile), 3 workers, the small seed, direct api ports.
+x-test-env: &test-env
+  TEST_CLOCK_ENABLED: 'true'
+  SEED_PROFILE: ${SEED_PROFILE_TEST:-small}
+  ARGON2_MEMORY_KIB: '4096'
+  ARGON2_TIME_COST: '1'
+
+services:
+  migrate:
+    environment: *test-env
+  api-1:
+    environment: { <<: *test-env, API_INSTANCE_ID: api-1 }
+    ports: ['127.0.0.1:3101:3000']
+  api-2:
+    environment: { <<: *test-env, API_INSTANCE_ID: api-2 }
+    ports: ['127.0.0.1:3102:3000']
+  worker:
+    environment: *test-env
+    deploy:
+      replicas: 3

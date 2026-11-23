@@ -53,3 +53,29 @@ jobs:
         run: pnpm test
       - name: Build
         run: pnpm build
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Prepare env
+        run: cp .env.example .env
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: Start the stack (test profile, small seed, 3 workers, test clock)
+        run: docker compose -f docker-compose.yml -f docker-compose.test.yml up --build -d --wait
+      - name: Stack suites (500 mails, races, kill -9, FLUSHALL, downtime, two api copies)
+        run: set -a && . ./.env && set +a && pnpm --filter @helpdesk/api test:stack
+      - name: Install browser
+        run: pnpm --filter @helpdesk/web exec playwright install --with-deps chromium
+      - name: Playwright journeys
+        run: set -a && . ./.env && set +a && pnpm --filter @helpdesk/web exec playwright test
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose logs --tail=200

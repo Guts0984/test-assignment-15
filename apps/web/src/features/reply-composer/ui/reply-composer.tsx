@@ -38,6 +38,8 @@ export function ReplyComposer({ ticketId, lastSeenSeq, disabled, onTyping }: Pro
   const [now, setNow] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const skew = useSyncExternalStore(clockStore.subscribe, clockStore.getSkew, clockStore.getSkew);
+  // The agent "has seen" the ticket up to the point they started writing; later public messages must be confirmed.
+  const baseSeq = useRef<number | null>(null);
   const undoButton = useRef<HTMLButtonElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
 
@@ -45,6 +47,7 @@ export function ReplyComposer({ ticketId, lastSeenSeq, disabled, onTyping }: Pro
   useEffect(() => {
     const s = browserStorage();
     setDrafts({ reply: loadDraft(s, ticketId, 'reply'), note: loadDraft(s, ticketId, 'note') });
+    baseSeq.current = null;
   }, [ticketId]);
 
   useEffect(() => {
@@ -60,6 +63,7 @@ export function ReplyComposer({ ticketId, lastSeenSeq, disabled, onTyping }: Pro
   }, [undo]);
 
   const update = (text: string): void => {
+    if (baseSeq.current === null && text !== '') baseSeq.current = lastSeenSeq;
     setDrafts((d) => ({ ...d, [kind]: text }));
     saveDraft(browserStorage(), ticketId, kind, text);
     onTyping(text !== '');
@@ -84,7 +88,7 @@ export function ReplyComposer({ ticketId, lastSeenSeq, disabled, onTyping }: Pro
             params: { path: { id: ticketId } },
             body: {
               body: text,
-              lastSeenSeq: conflict?.latestSeq ?? lastSeenSeq,
+              lastSeenSeq: conflict?.latestSeq ?? baseSeq.current ?? lastSeenSeq,
               confirmNewMessages: confirm,
             },
           }),
@@ -92,6 +96,7 @@ export function ReplyComposer({ ticketId, lastSeenSeq, disabled, onTyping }: Pro
         setUndo({ messageId: r.messageId, sendAfter: r.sendAfter, text });
       }
       clearDraft(browserStorage(), ticketId, kind);
+      baseSeq.current = null;
       setDrafts((d) => ({ ...d, [kind]: '' }));
       setConflict(null);
       onTyping(false);
@@ -200,6 +205,11 @@ export function ReplyComposer({ ticketId, lastSeenSeq, disabled, onTyping }: Pro
               </Button>
             </div>
           </div>
+        ) : null}
+        {!isNote && baseSeq.current !== null && lastSeenSeq > baseSeq.current && conflict === null ? (
+          <p role="status" data-testid="new-while-writing" className="mb-2 rounded-md border border-amber-600 bg-amber-500/15 p-2 text-sm">
+            New messages arrived while you were writing. You will be asked to confirm before sending.
+          </p>
         ) : null}
         {error !== null ? <ErrorNote>{error}</ErrorNote> : null}
         <TextArea

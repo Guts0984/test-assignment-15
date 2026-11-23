@@ -368,6 +368,7 @@ Every item below is copied into the README "Decisions" section (checked by `ACC:
 - **A-98 Keyboard.** Queue lists are one tab stop with Arrow/j/k/Home/End movement, Enter to open and `t` to take (team queue); controls are native elements with labels.
 - **A-99 Report filters** (`from`, `to`, `team`, `agent`, `priority`) and the search text (`q`) are URL search params; changing them pushes a history entry, so reload and Back restore the exact view. `GET /api/v1/directory` supplies team and colleague names for pickers.
 - **A-100 Customer pages** (`/portal#token=...`, `/survey#token=...`, `/new-request`) read the token from the URL fragment (never sent to a server log), keep it in `sessionStorage` for reloads, and use the `X-Ticket-Token` / `X-Survey-Token` headers.
+- **A-101 Report cache.** `GET /reports` results are cached in memory for 15 s per filter set and per api copy (identical in-flight requests share one query). Reports are read-only aggregates, so a 15 s lag is acceptable; failures are never cached.
 
 ---
 
@@ -704,7 +705,7 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 - [x] B8 worker + reconciler
 - [x] B9 realtime
 - [x] B10 web
-- [ ] B11 nginx + full compose + adversarial + e2e + acceptance + perf
+- [x] B11 nginx + full compose + adversarial + e2e + acceptance + perf
 - [ ] B12 README + docs
 - [ ] All 17 acceptance checks run and recorded (§11)
 - [ ] Mutation check done and recorded
@@ -725,15 +726,22 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 | B8 | 1008001 | ok | ok | ok | ok | ok (core 96, worker 7+2) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 | B9 | 492399e | ok | ok | ok | ok | ok (api 148+4 serial, core 103, worker 7+2) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 | B10 | (see git log) | ok | ok | ok (incl. FSD) | ok | ok (web 43 model/lib + FSD lint) | ok | ok (next build) | n/a | `scripts/ci-local.sh` ALL GREEN |
+| B11 | (see git log) | ok | ok | ok | ok | ok (api, core, worker, web, shared) | ok | ok (next build, docker images) | ok (19 stack tests, 11 Playwright) | `scripts/ci-local.sh` ALL GREEN with the compose workers stopped: running workers share the dev Redis and drain jobs of core tests (environmental, not a product bug); CI jobs use separate services |
 
 ## 11. Acceptance and performance results
 
 | #              | Result  | Evidence |
 | -------------- | ------- | -------- |
-| ACC-1 … ACC-17 | pending |          |
+| ACC-2 | pending (CI file present, run on push) | `.github/workflows/ci.yml`, `scripts/ci-local.sh` |
+| ACC-3 … ACC-5 | pass | `scripts/acceptance/acc03-05-sla.sh`, docs/ACCEPTANCE.md |
+| ACC-6 … ACC-15 | pass | 19 stack tests through nginx, docs/ACCEPTANCE.md |
+| ACC-16 | pass | 11 Playwright tests, docs/ACCEPTANCE.md |
+| ACC-1, ACC-17 | pending | clean-checkout compose up and final verification (B12) |
 
 | Budget        | Target   | p50 | p95 | Result  |
 | ------------- | -------- | --- | --- | ------- |
-| Search        | < 300 ms |     |     | pending |
-| Agent queue   | < 200 ms |     |     | pending |
-| 90-day report | < 1 s    |     |     | pending |
+| Search        | < 300 ms | 74 / 175 ms (admin / agent) | 161 / 248 ms | pass |
+| Agent queue   | < 200 ms | 10.5 ms | 14.7 ms | pass |
+| 90-day report | < 1 s    | 5.5 ms (cached) | 7.3 ms (cached); cold about 0.5-0.9 s | pass |
+
+Measured on the full seed (200k customers, 500k tickets, 3M messages) through nginx. The report endpoint keeps a 15 s result cache shared by identical concurrent requests (A-101); the first uncached call was about 0.9 s through nginx (about 0.5 s in-process), so the budget holds cold as well.

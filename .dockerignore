@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+**/.next
+.git
+.env
+docs
+*.md
+!README.md
+coverage
+playwright-report
+test-results

@@ -1,4 +1,5 @@
 import type { Queryable } from '@helpdesk/core';
+import { addBucket, emptyBucket, toStats, type Bucket } from '../domain/report-stats';
 
 type Row = {
   id: string;
@@ -93,6 +94,9 @@ export const getListItem = async (db: Queryable, id: string) =>
     toListItem,
   )[0] ?? null;
 
+/** Most matching messages considered for one search before ordering by recency. */
+export const SEARCH_CANDIDATE_CAP = 2000;
+
 const escapeLike = (s: string): string => s.replace(/[\\%_]/g, '\\$&');
 
 /** Number, customer email/name, or full-text over correspondence and subjects, scoped to the caller's teams. */
@@ -128,21 +132,21 @@ export const searchTickets = async (
       )
     ).map((r) => ({ ...toListItem(r), snippet: null as string | null }));
   }
+  // Candidates first, capped: a very common word can match millions of messages, and only the newest page is shown.
+  // The cap is taken on the message index alone (fast), then the team filter and the ordering are applied to the candidates.
+  // Team-scoped searches look at more candidates so other teams' messages do not crowd the result out.
+  const cap = teams === null ? SEARCH_CANDIDATE_CAP : SEARCH_CANDIDATE_CAP * 4;
   const rows = await db.$queryRawUnsafe<(Row & { snippet: string | null })[]>(
-    `WITH q AS (SELECT websearch_to_tsquery('simple', $1) AS tsq),
-          hits AS (
-            SELECT m.ticket_id AS id FROM messages m, q WHERE m.search_vector @@ q.tsq AND m.cancelled_at IS NULL
+    `WITH cand AS (
+            (SELECT m.ticket_id AS id FROM messages m WHERE m.search_vector @@ websearch_to_tsquery('simple', $1) AND m.cancelled_at IS NULL LIMIT ${cap})
             UNION
-            SELECT t.id FROM tickets t, q WHERE t.subject_vector @@ q.tsq
+            (SELECT t.id FROM tickets t WHERE t.subject_vector @@ websearch_to_tsquery('simple', $1) LIMIT ${cap})
           )
      SELECT ${COLS}, NULL::text AS snippet
-       FROM hits h JOIN tickets t ON t.id = h.id JOIN customers c ON c.id = t.customer_id LEFT JOIN users u ON u.id = t.assignee_id
-      WHERE ${cond}
+       FROM cand h JOIN tickets t ON t.id = h.id JOIN customers c ON c.id = t.customer_id LEFT JOIN users u ON u.id = t.assignee_id
+      WHERE ($2::uuid[] IS NULL OR t.team_id = ANY($2::uuid[]))
       ORDER BY t.updated_at DESC LIMIT $3 OFFSET $4`,
-    q,
-    teams,
-    limit,
-    offset,
+    q, teams, limit, offset,
   );
   const byName =
     rows.length === 0 || rows.length >= limit
@@ -210,42 +214,6 @@ export const teamDashboard = async (db: Queryable, teamId: string, now: Date) =>
   };
 };
 
-type StatRow = {
-  tickets: bigint;
-  fr_med: number | null;
-  fr_p90: number | null;
-  res_med: number | null;
-  res_p90: number | null;
-  decided: bigint;
-  within: bigint;
-  breaches: bigint;
-  rating_avg: number | null;
-  rating_count: bigint;
-};
-
-const STATS = `count(*)::bigint AS tickets,
-  percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM (t.first_responded_at - t.created_at)) / 60) FILTER (WHERE t.first_responded_at IS NOT NULL) AS fr_med,
-  percentile_cont(0.9) WITHIN GROUP (ORDER BY extract(epoch FROM (t.first_responded_at - t.created_at)) / 60) FILTER (WHERE t.first_responded_at IS NOT NULL) AS fr_p90,
-  percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM (t.resolved_at - t.created_at)) / 60) FILTER (WHERE t.resolved_at IS NOT NULL) AS res_med,
-  percentile_cont(0.9) WITHIN GROUP (ORDER BY extract(epoch FROM (t.resolved_at - t.created_at)) / 60) FILTER (WHERE t.resolved_at IS NOT NULL) AS res_p90,
-  count(*) FILTER (WHERE t.resolved_at IS NOT NULL OR t.first_response_breached OR t.resolution_breached)::bigint AS decided,
-  count(*) FILTER (WHERE (t.resolved_at IS NOT NULL OR t.first_response_breached OR t.resolution_breached) AND NOT t.first_response_breached AND NOT t.resolution_breached)::bigint AS within,
-  count(*) FILTER (WHERE t.first_response_breached OR t.resolution_breached)::bigint AS breaches,
-  avg(s.rating)::float AS rating_avg, count(s.rating)::bigint AS rating_count`;
-
-const toStats = (r: StatRow) => ({
-  tickets: Number(r.tickets),
-  firstResponseMedianMinutes: r.fr_med,
-  firstResponseP90Minutes: r.fr_p90,
-  resolutionMedianMinutes: r.res_med,
-  resolutionP90Minutes: r.res_p90,
-  withinSlaPercent:
-    Number(r.decided) === 0 ? null : Math.round((Number(r.within) / Number(r.decided)) * 1000) / 10,
-  breaches: Number(r.breaches),
-  ratingAverage: r.rating_avg === null ? null : Math.round(r.rating_avg * 100) / 100,
-  ratingCount: Number(r.rating_count),
-});
-
 export type ReportFilter = {
   readonly from: string;
   readonly to: string;
@@ -254,55 +222,68 @@ export type ReportFilter = {
   readonly priority: string | null;
 };
 
-const REPORT_FROM = `FROM tickets t JOIN teams tm ON tm.id = t.team_id LEFT JOIN surveys s ON s.ticket_id = t.id AND s.rating IS NOT NULL`;
-const REPORT_WHERE = `t.created_at >= ($1::date::timestamp AT TIME ZONE tm.time_zone)
-  AND t.created_at < (($2::date + 1)::timestamp AT TIME ZONE tm.time_zone)
-  AND ($3::uuid[] IS NULL OR t.team_id = ANY($3::uuid[]))
-  AND ($4::uuid IS NULL OR t.assignee_id = $4::uuid)
-  AND ($5::text IS NULL OR t.priority = $5)
-  AND t.merged_into_id IS NULL`;
+type GroupRow = {
+  team_id: string; team_name: string; assignee_id: string | null; assignee_name: string | null; tickets: bigint;
+  fr: number[] | null; res: number[] | null; decided: bigint; within: bigint; breaches: bigint; rating_sum: bigint | null; rating_count: bigint;
+  r1: bigint; r2: bigint; r3: bigint; r4: bigint; r5: bigint;
+};
 
+const toBucket = (r: GroupRow): Bucket => ({
+  tickets: Number(r.tickets), fr: (r.fr ?? []).map(Number), res: (r.res ?? []).map(Number), decided: Number(r.decided), within: Number(r.within), breaches: Number(r.breaches),
+  ratingSum: Number(r.rating_sum ?? 0n), ratingCount: Number(r.rating_count), dist: [Number(r.r1), Number(r.r2), Number(r.r3), Number(r.r4), Number(r.r5)],
+});
+
+/**
+ * Period report in one pass over the period's tickets (per-team index range scans, boundaries in each team's time zone).
+ * The database groups by team and agent and returns the raw durations; percentiles are computed once from those.
+ */
 export const periodReport = async (db: Queryable, f: ReportFilter) => {
-  const args = [f.from, f.to, f.teamIds === null ? null : [...f.teamIds], f.agentId, f.priority];
-  const total = await db.$queryRawUnsafe<StatRow[]>(
-    `SELECT ${STATS} ${REPORT_FROM} WHERE ${REPORT_WHERE}`,
-    ...args,
+  const rows = await db.$queryRawUnsafe<GroupRow[]>(
+    `WITH tr AS (
+       SELECT id, ($1::date::timestamp AT TIME ZONE time_zone) AS lb, (($2::date + 1)::timestamp AT TIME ZONE time_zone) AS ub
+         FROM teams WHERE ($3::uuid[] IS NULL OR id = ANY($3::uuid[]))
+     ), g AS (
+       SELECT t.team_id, t.assignee_id, count(*)::bigint AS tickets,
+              array_agg(round(extract(epoch FROM (t.first_responded_at - t.created_at)) / 60)::int) FILTER (WHERE t.first_responded_at IS NOT NULL) AS fr,
+              array_agg(round(extract(epoch FROM (t.resolved_at - t.created_at)) / 60)::int) FILTER (WHERE t.resolved_at IS NOT NULL) AS res,
+              count(*) FILTER (WHERE t.resolved_at IS NOT NULL OR t.first_response_breached OR t.resolution_breached)::bigint AS decided,
+              count(*) FILTER (WHERE (t.resolved_at IS NOT NULL OR t.first_response_breached OR t.resolution_breached)
+                                 AND NOT t.first_response_breached AND NOT t.resolution_breached)::bigint AS within,
+              count(*) FILTER (WHERE t.first_response_breached OR t.resolution_breached)::bigint AS breaches,
+              sum(s.rating)::bigint AS rating_sum, count(s.rating)::bigint AS rating_count,
+              count(*) FILTER (WHERE s.rating = 1) AS r1, count(*) FILTER (WHERE s.rating = 2) AS r2, count(*) FILTER (WHERE s.rating = 3) AS r3,
+              count(*) FILTER (WHERE s.rating = 4) AS r4, count(*) FILTER (WHERE s.rating = 5) AS r5
+         FROM tr
+        CROSS JOIN LATERAL (
+          SELECT id, team_id, assignee_id, created_at, first_responded_at, resolved_at, first_response_breached, resolution_breached
+            FROM tickets t
+           WHERE t.team_id = tr.id AND t.created_at >= tr.lb AND t.created_at < tr.ub AND t.merged_into_id IS NULL
+             AND ($4::uuid IS NULL OR t.assignee_id = $4::uuid) AND ($5::text IS NULL OR t.priority = $5)
+        ) t
+        LEFT JOIN surveys s ON s.ticket_id = t.id AND s.rating IS NOT NULL
+        GROUP BY t.team_id, t.assignee_id
+     )
+     SELECT g.*, tm.name AS team_name, u.name AS assignee_name FROM g JOIN teams tm ON tm.id = g.team_id LEFT JOIN users u ON u.id = g.assignee_id`,
+    f.from, f.to, f.teamIds === null ? null : [...f.teamIds], f.agentId, f.priority,
   );
-  const byTeam = await db.$queryRawUnsafe<(StatRow & { team_id: string; team_name: string })[]>(
-    `SELECT tm.id AS team_id, tm.name AS team_name, ${STATS} ${REPORT_FROM} WHERE ${REPORT_WHERE} GROUP BY tm.id, tm.name ORDER BY tm.name`,
-    ...args,
-  );
-  const byAgent = await db.$queryRawUnsafe<
-    (StatRow & { agent_id: string | null; agent_name: string | null })[]
-  >(
-    `SELECT t.assignee_id AS agent_id, u.name AS agent_name, ${STATS}
-       ${REPORT_FROM} LEFT JOIN users u ON u.id = t.assignee_id WHERE ${REPORT_WHERE} GROUP BY t.assignee_id, u.name ORDER BY u.name NULLS LAST`,
-    ...args,
-  );
-  const dist = await db.$queryRawUnsafe<{ rating: number; n: bigint }[]>(
-    `SELECT s.rating, count(*)::bigint AS n ${REPORT_FROM} WHERE ${REPORT_WHERE} AND s.rating IS NOT NULL GROUP BY s.rating ORDER BY s.rating`,
-    ...args,
-  );
-  const empty: StatRow = {
-    tickets: 0n,
-    fr_med: null,
-    fr_p90: null,
-    res_med: null,
-    res_p90: null,
-    decided: 0n,
-    within: 0n,
-    breaches: 0n,
-    rating_avg: null,
-    rating_count: 0n,
-  };
+  const total = emptyBucket();
+  const teams = new Map<string, { name: string; b: Bucket }>();
+  const agents = new Map<string, { name: string; b: Bucket }>();
+  for (const r of rows) {
+    const b = toBucket(r);
+    addBucket(total, b);
+    const t = teams.get(r.team_id) ?? { name: r.team_name, b: emptyBucket() };
+    addBucket(t.b, b);
+    teams.set(r.team_id, t);
+    const key = r.assignee_id ?? 'none';
+    const a = agents.get(key) ?? { name: r.assignee_name ?? 'Unassigned', b: emptyBucket() };
+    addBucket(a.b, b);
+    agents.set(key, a);
+  }
   return {
-    total: toStats(total[0] ?? empty),
-    byTeam: byTeam.map((r) => ({ teamId: r.team_id, teamName: r.team_name, ...toStats(r) })),
-    byAgent: byAgent.map((r) => ({
-      agentId: r.agent_id,
-      agentName: r.agent_name ?? 'Unassigned',
-      ...toStats(r),
-    })),
-    ratingDistribution: dist.map((d) => ({ rating: d.rating, count: Number(d.n) })),
+    total: toStats(total),
+    byTeam: [...teams].map(([teamId, v]) => ({ teamId, teamName: v.name, ...toStats(v.b) })).sort((a, b) => a.teamName.localeCompare(b.teamName)),
+    byAgent: [...agents].map(([id, v]) => ({ agentId: id === 'none' ? null : id, agentName: v.name, ...toStats(v.b) })).sort((a, b) => a.agentName.localeCompare(b.agentName)),
+    ratingDistribution: total.dist.map((count, i) => ({ rating: i + 1, count })).filter((d) => d.count > 0),
   };
 };
