@@ -156,3 +156,29 @@ export type AgentInput = z.infer<typeof agentInput>;
 export type RoutingRuleInput = z.infer<typeof routingRuleInput>;
 export type ReportQueryInput = z.infer<typeof reportQueryInput>;
 export type SurveyRatingInput = z.infer<typeof surveyRatingInput>;
+
+export const idParam = z.object({ id: uuid }).strict();
+export const teamHolidayParams = z.object({ id: uuid, holidayId: uuid }).strict();
+export const testClockInput = z
+  .object({
+    offsetMs: z
+      .number()
+      .int()
+      .min(-10 * 365 * 86_400_000)
+      .max(10 * 365 * 86_400_000)
+      .optional(),
+    advanceMs: z
+      .number()
+      .int()
+      .min(0)
+      .max(10 * 365 * 86_400_000)
+      .optional(),
+  })
+  .strict()
+  .refine((v) => (v.offsetMs === undefined) !== (v.advanceMs === undefined), {
+    message: 'send exactly one of offsetMs or advanceMs',
+  });
+
+export const jobIdParam = z
+  .object({ id: z.string().regex(/^\d{1,18}$/, 'must be a numeric job id') })
+  .strict();

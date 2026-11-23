@@ -14,3 +14,16 @@ export {
   isUniqueViolation,
   type DbErrorCode,
 } from './db/errors';
+export { createDbClock, type DbClock } from './clock/db-clock';
+export { appendTicketEvent, type ActorKind, type EventInput } from './events/ticket-events';
+export { returnAgentTicketsToQueue, type ReturnToQueueInput } from './events/queue-return';
+export {
+  cancelJob,
+  JOB_KINDS,
+  requestTeamAssignment,
+  requestTeamAssignments,
+  rescheduleJob,
+  upsertJob,
+  type JobKind,
+  type NewJob,
+} from './jobs/jobs';

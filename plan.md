@@ -331,6 +331,13 @@ Every item below is copied into the README "Decisions" section (checked by `ACC:
 - **A-67 Full seed measured:** 412 s on the dev machine (200,000 customers, 500,000 tickets, 3,000,000 messages, 1,003,326 history events, 174,300 surveys; 2,000 open + 60 resolved live tickets, 151 SLA breaches due within 10 minutes of the seed ending). The first `docker compose up` therefore takes several minutes; compose runs migrations and the seed in a one-shot `migrate` service that api and worker wait for. Later starts skip the seed (`seed_runs` marker).
 - **A-68 Seed demo accounts:** `admin@helpdesk.test`, `lead.<team-key>@helpdesk.test` (`support-kyiv`, `billing-kyiv`, `support-warsaw`, `tech-warsaw`) and `agent01`..`agent80@helpdesk.test`, all with `SEED_STAFF_PASSWORD`. Every tenth agent per team starts off shift; limits are random 15-30. The leads are not assignment candidates. Seed text is English in Latin script only; the `uk` language code appears for teams and tickets but no Cyrillic text exists in the data (checked by a test and by `scripts/check-no-cyrillic.sh`).
 
+- **A-69 Auth details (B5).** Access JWT: HS256 pinned, `iss=helpdesk`, `aud=helpdesk-api`, claims `sub`, `ver`, `role`, `iat`, `nbf`, `exp`, time-checked against the injected clock. The guard re-reads the user on every request, so deactivation, role changes and a bumped `token_version` act immediately; the `role` claim is never trusted for admin routes (the database role decides). Logout revokes the refresh family and bumps `token_version`, which also kills outstanding access tokens. Refresh: the used-at update is one conditional `UPDATE ... RETURNING`; presenting a used token revokes the whole family (parallel refresh with one token: at most one wins). Unknown email and wrong password both run an argon2 verification and return the same body.
+- **A-70 Every route declares its access** (`@RequireAccess('public'|'staff'|'admin'|'customer')`, exported as `x-access` in OpenAPI); a route without it is treated as admin-only. The route-table adversarial test enumerates the OpenAPI document and asserts 401 without credentials, 403 for an agent on admin routes, and that no route lacks a declaration.
+- **A-71 Shared test clock implementation.** `app_clock(offset_ms, generation)` row + `NOTIFY app_clock` trigger; each process keeps an in-memory offset updated by LISTEN with a 1 s polling fallback. `POST /api/v1/test/clock {offsetMs | advanceMs}` exists only when `TEST_CLOCK_ENABLED=true` and needs `X-Test-Control-Token`. Suites that move the clock are `*.serial.spec.ts` and run one file at a time in a second Vitest invocation.
+- **A-72 OpenAPI in the repo.** `apps/api/openapi.json` (default profile, so no `/test/*`) is committed and `scripts/openapi-diff.sh` regenerates it and the `openapi-typescript` client in `apps/web/src/shared/api/generated`, failing on any difference from the committed (CI) or staged (local) files. Swagger UI is at `/docs`, the JSON at `/docs/openapi.json`.
+- **A-73 Error mapping.** Body-parser failures map to `MALFORMED_JSON` (400) and `PAYLOAD_TOO_LARGE` (413); non-JSON bodies on JSON routes are `UNSUPPORTED_MEDIA_TYPE` (415) via a content-type check (multipart/raw only under `/public/`, `/portal/`, `/inbound/`); unknown routes are `NOT_FOUND`; anything unexpected is a generic `INTERNAL_ERROR` with the stack only in the server log.
+- **A-74 Agents who leave a team or are deactivated** have their tickets returned to the team queue (history event `returned_to_queue` with the reason) and an assignment run is requested; lowering a limit below the current load is allowed.
+
 ---
 
 ## 4. Architecture
@@ -660,7 +667,7 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 - [x] B2 packages/shared rules + exhaustive unit tests (ACC-3/4/5)
 - [x] B3 DB schema, migrations, raw SQL guards
 - [x] B4 seed (full / small / none)
-- [ ] B5 api core: auth, magic links, error format, OpenAPI + client, admin
+- [x] B5 api core: auth, magic links, error format, OpenAPI + client, admin
 - [ ] B6 ticket domain in api
 - [ ] B7 mail stub
 - [ ] B8 worker + reconciler
@@ -680,7 +687,8 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 | B1     |      |         |           |      | n/a          |      | n/a         |       | n/a |       |
 | B2 | 1f7c46a | ok | ok | ok | n/a | ok (149 shared + 12) | n/a | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 | B3 | be091d0 | ok | ok | ok | n/a | ok (24 db) | ok (real postgres) | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
-| B4 | (see git log) | ok | ok | ok | n/a | ok (25 api incl. small seed) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN; full seed run once: 412 s, exact counts via `scripts/acceptance/check-seed.sh` |
+| B4 | 6e30fd3 | ok | ok | ok | n/a | ok (25 api incl. small seed) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN; full seed run once: 412 s, exact counts via `scripts/acceptance/check-seed.sh` |
+| B5 | (see git log) | ok | ok | ok | ok (regenerated = staged) | ok (api 89 + 4 serial, core 28, shared 149) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 
 ## 11. Acceptance and performance results
 

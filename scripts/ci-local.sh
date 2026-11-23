@@ -24,6 +24,8 @@ pnpm lint
 
 if [ -f scripts/openapi-diff.sh ]; then
   step "openapi client diff"
+  # Locally nothing is committed yet: stage what exists so the check compares regeneration against it.
+  git add -A -- apps/api/openapi.json apps/web/src/shared/api/generated 2>/dev/null || true
   bash scripts/openapi-diff.sh
 fi
 

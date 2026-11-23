@@ -9,6 +9,9 @@ const nestFiles = [
   'apps/api/src/**/*.{module,controller,service,guard,interceptor,pipe,filter,gateway,processor}.ts',
   'apps/worker/src/**/*.{module,controller,service,guard,interceptor,pipe,filter,gateway,processor}.ts',
   'apps/api/src/**/dto/*.ts',
+  'apps/api/src/**/*.dto.ts',
+  // classes declared next to controllers only to feed createZodDto
+  'apps/api/src/**/*.controller.ts',
 ];
 
 const webLayers = ['app', 'pages', 'widgets', 'features', 'entities', 'shared'];

@@ -119,3 +119,4 @@ export {
 } from './errors/error-codes';
 export * from './schemas/primitives';
 export * from './schemas/inputs';
+export * from './schemas/outputs';
