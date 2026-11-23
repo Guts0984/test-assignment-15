@@ -426,9 +426,11 @@ describe('INV-9 building blocks: pending work is always re-derivable from Postgr
     expect(
       await db.job.count({ where: { dedupeKey: `outbound:${ack.id}`, status: 'pending' } }),
     ).toBe(1);
-    expect(await ensureDurableJobs(db, at(T0, 2000))).toBe(
-      await ensureDurableJobs(db, at(T0, 2000)),
-    );
+    // Idempotent for this team's work: another run adds no second job (other test files may create unrelated rows meanwhile).
+    await ensureDurableJobs(db, at(T0, 2000));
+    await ensureDurableJobs(db, at(T0, 2000));
+    expect(await db.job.count({ where: { dedupeKey: `assign:${team.id}` } })).toBe(1);
+    expect(await db.job.count({ where: { dedupeKey: `outbound:${ack.id}` } })).toBe(1);
   });
 });
 

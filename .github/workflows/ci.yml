@@ -49,6 +49,8 @@ jobs:
         run: pnpm lint
       - name: Generated OpenAPI client must match the schema
         run: if [ -f scripts/openapi-diff.sh ]; then bash scripts/openapi-diff.sh; fi
+      - name: README carries the generated status table, every decision and every required section
+        run: bash scripts/acceptance/check-readme.sh
       - name: Tests (unit and integration)
         run: pnpm test
       - name: Build

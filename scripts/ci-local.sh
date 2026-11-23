@@ -29,6 +29,9 @@ if [ -f scripts/openapi-diff.sh ]; then
   bash scripts/openapi-diff.sh
 fi
 
+step "README matches the code"
+bash scripts/acceptance/check-readme.sh
+
 step "unit tests"
 pnpm test
 

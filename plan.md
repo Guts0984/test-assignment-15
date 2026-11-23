@@ -706,7 +706,7 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 - [x] B9 realtime
 - [x] B10 web
 - [x] B11 nginx + full compose + adversarial + e2e + acceptance + perf
-- [ ] B12 README + docs
+- [x] B12 README + docs
 - [ ] All 17 acceptance checks run and recorded (§11)
 - [ ] Mutation check done and recorded
 - [ ] Clean-checkout verification (`.env.example` → `.env`, typecheck, lint, test, build, adversarial, compose up + smoke)
@@ -727,6 +727,7 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 | B9 | 492399e | ok | ok | ok | ok | ok (api 148+4 serial, core 103, worker 7+2) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 | B10 | (see git log) | ok | ok | ok (incl. FSD) | ok | ok (web 43 model/lib + FSD lint) | ok | ok (next build) | n/a | `scripts/ci-local.sh` ALL GREEN |
 | B11 | (see git log) | ok | ok | ok | ok | ok (api, core, worker, web, shared) | ok | ok (next build, docker images) | ok (19 stack tests, 11 Playwright) | `scripts/ci-local.sh` ALL GREEN with the compose workers stopped: running workers share the dev Redis and drain jobs of core tests (environmental, not a product bug); CI jobs use separate services |
+| B12 | (see git log) | ok | ok | ok | ok | ok (core 103, README check) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN; README check added to CI |
 
 ## 11. Acceptance and performance results
 
