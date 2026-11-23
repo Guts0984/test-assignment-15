@@ -707,9 +707,9 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 - [x] B10 web
 - [x] B11 nginx + full compose + adversarial + e2e + acceptance + perf
 - [x] B12 README + docs
-- [ ] All 17 acceptance checks run and recorded (§11)
-- [ ] Mutation check done and recorded
-- [ ] Clean-checkout verification (`.env.example` → `.env`, typecheck, lint, test, build, adversarial, compose up + smoke)
+- [x] All 17 acceptance checks run and recorded (§11)
+- [x] Mutation check done and recorded
+- [x] Clean-checkout verification (`.env.example` → `.env`, typecheck, lint, test, build, adversarial, compose up + smoke)
 - [ ] Working tree clean
 
 ## 10. Local CI log (per commit)
@@ -733,11 +733,12 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 
 | #              | Result  | Evidence |
 | -------------- | ------- | -------- |
-| ACC-2 | pending (CI file present, run on push) | `.github/workflows/ci.yml`, `scripts/ci-local.sh` |
+| ACC-2 | pass | `.github/workflows/ci.yml`; `scripts/ci-local.sh` ALL GREEN, also from a clean clone with `.env.example` copied to `.env` |
 | ACC-3 … ACC-5 | pass | `scripts/acceptance/acc03-05-sla.sh`, docs/ACCEPTANCE.md |
 | ACC-6 … ACC-15 | pass | 19 stack tests through nginx, docs/ACCEPTANCE.md |
 | ACC-16 | pass | 11 Playwright tests, docs/ACCEPTANCE.md |
-| ACC-1, ACC-17 | pending | clean-checkout compose up and final verification (B12) |
+| ACC-1 | pass | `scripts/acceptance/acc01-compose-up.sh`: fresh clone, `cp .env.example .env`, `docker compose up --build --wait` (small seed for time; the full seed ran earlier, 412 s), api, web, /docs and mail stub answer through nginx, seeded agent signs in |
+| ACC-17 | pass | `scripts/acceptance/check-readme.sh` (status table equals `TRANSITIONS`, every assumption and required section present); examples taken from tested cases |
 
 | Budget        | Target   | p50 | p95 | Result  |
 | ------------- | -------- | --- | --- | ------- |
