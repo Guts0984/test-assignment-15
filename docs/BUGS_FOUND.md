@@ -50,4 +50,6 @@ A reviewer attacked the finished system; every finding below was reproduced or c
 | 32 | F5: a reconnect still sent the expired token and Socket.IO does not retry a refused handshake | The web client refreshes the session on `connect_error` and reconnects (`socket-client.ts`) |
 | 33 | F14: bounces of agent replies were not marked, because the reply's Message-ID also exists as a thread message | The outbound match now counts even when the message row is found first (`inbound.int.spec.ts`) |
 | 34 | Introduced by the first fix: ordinary customer mail carrying `X-Auto-Response-Suppress: All` was dropped as an autoreply | The header alone no longer counts; it needs the "Automatic reply:" subject too (`mail-headers.spec.ts`) |
-| 35 | F7 (common words return a sample), F6 (duplicate after a crash), F18 (team search p95 296 ms), logout on every device | Not changed, documented as known limits (README section 10, A-33, A-81, A-85, A-105) |
+| 35 | F7: a common word returned an unordered sample, so page 1 could miss the newest ticket | Common words walk tickets newest-first and are exact (6-14 ms on the full seed); this also removes the team-scoped search sitting at the budget (`tickets.int.spec.ts`) |
+| 36 | F21: logout signed the user out on every device | Access tokens carry a session id; logout ends that session and its sockets only (`session-sockets.serial.spec.ts`) |
+| 37 | F6: duplicate emails after `kill -9` | Not changed: SMTP has no atomic send-and-commit, so delivery stays at least once with the same Message-ID (README section 4) |

@@ -155,7 +155,14 @@ describe('access token attacks', () => {
 
   it('a staff token cannot claim to be admin by role claim alone: the database role decides', async () => {
     const u = await createUserRow(db);
-    const t = await forge({ sub: u.id, ver: 0, role: 'admin' });
+    // a validly signed token of a live session of this user, but with the role claim raised to admin
+    const real = await login(api, u);
+    const sid = (
+      JSON.parse(Buffer.from(real.accessToken.split('.')[1] ?? '', 'base64url').toString()) as {
+        sid: string;
+      }
+    ).sid;
+    const t = await forge({ sub: u.id, ver: 0, role: 'admin', sid });
     const r = await client({ baseUrl: api.url }).get('/api/v1/admin/teams', {
       headers: { authorization: `Bearer ${t}` },
     });

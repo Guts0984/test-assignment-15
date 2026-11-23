@@ -104,3 +104,11 @@ export const revokeFamily = async (db: Queryable, familyId: string, now: Date): 
     data: { revokedAt: now },
   });
 };
+
+/** A session is alive while its refresh family exists and none of its tokens was revoked (logout, reuse detection). */
+export const sessionActive = async (db: Queryable, familyId: string): Promise<boolean> => {
+  const rows = await db.$queryRaw<{ ok: boolean }[]>`
+    SELECT (count(*) > 0 AND count(*) FILTER (WHERE revoked_at IS NOT NULL) = 0) AS ok
+      FROM refresh_tokens WHERE family_id = ${familyId}::uuid`;
+  return rows[0]?.ok === true;
+};

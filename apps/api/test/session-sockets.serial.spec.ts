@@ -57,6 +57,28 @@ describe('long-lived sockets (review F5, F13)', () => {
     await setTestClock(a, { offsetMs: 0 });
   });
 
+  it('logging out on one device leaves the same account signed in on another (review F21)', async () => {
+    const team = await createTeamRow(db);
+    const user = await createUserRow(db, { teams: [{ teamId: team.id, role: 'agent' }] });
+    const phone = await login(a, user);
+    const laptop = await login(a, user);
+    const watching = connectSocket(b.url, { token: laptop.accessToken });
+    sockets.push(watching);
+    await watching.connected();
+    const out = await client({ baseUrl: a.url }).post(
+      '/api/v1/auth/logout',
+      {},
+      {
+        headers: { cookie: phone.cookie },
+      },
+    );
+    expect(out.status).toBe(200);
+    expect((await phone.client.get('/api/v1/auth/me')).status).toBe(401); // the session that logged out is dead
+    expect((await laptop.client.get('/api/v1/auth/me')).status).toBe(200); // the other one is not
+    await new Promise((r) => setTimeout(r, 300));
+    expect(watching.socket.connected).toBe(true);
+  });
+
   it('logging out cuts the user’s open sockets on both api copies', async () => {
     const w = await world();
     const open = [a, b].map((api) => {

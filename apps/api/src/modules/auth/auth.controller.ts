@@ -19,7 +19,8 @@ export class AuthController {
   constructor(
     @Inject(AUTH) private readonly auth: AuthUseCases,
     @Inject(ENV) private readonly env: AuthEnv,
-    @Inject(ACCESS_REVOKER) private readonly revoker: { disconnectUser: (userId: string) => void },
+    @Inject(ACCESS_REVOKER)
+    private readonly revoker: { disconnectSession: (sessionId: string) => void },
   ) {}
 
   private get secure(): boolean {
@@ -83,9 +84,9 @@ export class AuthController {
   @ApiOkResponse({ type: OkDto })
   @ApiErrors()
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<OkDto> {
-    const userId = await this.auth.logout(readCookie(req.headers.cookie, REFRESH_COOKIE));
-    // The token version was bumped, so every open WebSocket of this user is cut on both api copies.
-    if (userId !== null) this.revoker.disconnectUser(userId);
+    const sessionId = await this.auth.logout(readCookie(req.headers.cookie, REFRESH_COOKIE));
+    // Only this login session ends: its access tokens stop working and its sockets are cut on both api copies.
+    if (sessionId !== null) this.revoker.disconnectSession(sessionId);
     res.setHeader('set-cookie', clearRefreshCookie(this.secure));
     return { ok: true };
   }

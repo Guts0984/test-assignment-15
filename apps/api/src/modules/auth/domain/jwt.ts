@@ -8,6 +8,8 @@ export type AccessClaims = {
   readonly userId: string;
   readonly version: number;
   readonly role: 'admin' | 'staff';
+  /** The login session (refresh-token family) this token belongs to; logout ends only that session. */
+  readonly sessionId: string;
 };
 export type JwtFailure = 'invalid' | 'expired';
 
@@ -20,7 +22,7 @@ export const signAccessToken = (
   ttlSeconds: number,
 ): Promise<string> => {
   const iat = Math.floor(now.getTime() / 1000);
-  return new SignJWT({ ver: claims.version, role: claims.role })
+  return new SignJWT({ ver: claims.version, role: claims.role, sid: claims.sessionId })
     .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
     .setSubject(claims.userId)
     .setIssuer(ISSUER)
@@ -45,15 +47,21 @@ export const verifyAccessToken = async (
       currentDate: now,
       requiredClaims: ['sub', 'exp', 'iat', 'nbf'],
     });
-    const { sub, ver, role } = payload as { sub?: unknown; ver?: unknown; role?: unknown };
+    const { sub, ver, role, sid } = payload as {
+      sub?: unknown;
+      ver?: unknown;
+      role?: unknown;
+      sid?: unknown;
+    };
     if (
       typeof sub !== 'string' ||
       typeof ver !== 'number' ||
+      typeof sid !== 'string' ||
       (role !== 'admin' && role !== 'staff')
     ) {
       return err('invalid');
     }
-    return ok({ userId: sub, version: ver, role });
+    return ok({ userId: sub, version: ver, role, sessionId: sid });
   } catch (e) {
     const code = (e as { code?: string }).code;
     return err(code === 'ERR_JWT_EXPIRED' ? 'expired' : 'invalid');

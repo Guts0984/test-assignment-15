@@ -22,7 +22,17 @@ export type Bucket = {
   dist: [number, number, number, number, number];
 };
 
-export const emptyBucket = (): Bucket => ({ tickets: 0, fr: [], res: [], decided: 0, within: 0, breaches: 0, ratingSum: 0, ratingCount: 0, dist: [0, 0, 0, 0, 0] });
+export const emptyBucket = (): Bucket => ({
+  tickets: 0,
+  fr: [],
+  res: [],
+  decided: 0,
+  within: 0,
+  breaches: 0,
+  ratingSum: 0,
+  ratingCount: 0,
+  dist: [0, 0, 0, 0, 0],
+});
 
 export const addBucket = (into: Bucket, b: Bucket): void => {
   into.tickets += b.tickets;

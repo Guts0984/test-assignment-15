@@ -4,7 +4,7 @@ import type { Db } from '@helpdesk/core';
 import type { Clock, Principal } from '@helpdesk/shared';
 import { resolveTicketLink } from '../../modules/auth/link-tokens';
 import { verifyAccessToken } from '../../modules/auth/domain/jwt';
-import { findUserById, loadMemberships } from '../../modules/auth/repo/auth-repo';
+import { findUserById, loadMemberships, sessionActive } from '../../modules/auth/repo/auth-repo';
 import { CLOCK, DB, ENV } from '../../infra/tokens';
 import { appError } from '../errors/app-error';
 import { ACCESS_KEY, type Access } from './access';
@@ -62,7 +62,12 @@ export class AuthGuard implements CanActivate {
       );
     }
     const user = await findUserById(this.db, verified.value.userId);
-    if (user === null || !user.isActive || user.tokenVersion !== verified.value.version) {
+    if (
+      user === null ||
+      !user.isActive ||
+      user.tokenVersion !== verified.value.version ||
+      !(await sessionActive(this.db, verified.value.sessionId))
+    ) {
       throw appError('UNAUTHORIZED', 'Authentication required');
     }
     const principal: Principal =

@@ -15,11 +15,41 @@ describe('report statistics', () => {
     expect(v).toEqual([3, 1, 2]);
   });
   it('merges buckets and computes shares and averages with rounding', () => {
-    const a = { ...emptyBucket(), tickets: 3, fr: [10, 20], decided: 3, within: 2, breaches: 1, ratingSum: 9, ratingCount: 2, dist: [0, 0, 1, 0, 1] as [number, number, number, number, number] };
-    const b = { ...emptyBucket(), tickets: 1, fr: [30], decided: 1, within: 1, ratingSum: 4, ratingCount: 1, dist: [0, 0, 0, 1, 0] as [number, number, number, number, number] };
+    const a = {
+      ...emptyBucket(),
+      tickets: 3,
+      fr: [10, 20],
+      decided: 3,
+      within: 2,
+      breaches: 1,
+      ratingSum: 9,
+      ratingCount: 2,
+      dist: [0, 0, 1, 0, 1] as [number, number, number, number, number],
+    };
+    const b = {
+      ...emptyBucket(),
+      tickets: 1,
+      fr: [30],
+      decided: 1,
+      within: 1,
+      ratingSum: 4,
+      ratingCount: 1,
+      dist: [0, 0, 0, 1, 0] as [number, number, number, number, number],
+    };
     addBucket(a, b);
-    expect(toStats(a)).toMatchObject({ tickets: 4, firstResponseMedianMinutes: 20, withinSlaPercent: 75, breaches: 1, ratingAverage: 4.33, ratingCount: 3 });
+    expect(toStats(a)).toMatchObject({
+      tickets: 4,
+      firstResponseMedianMinutes: 20,
+      withinSlaPercent: 75,
+      breaches: 1,
+      ratingAverage: 4.33,
+      ratingCount: 3,
+    });
     expect(a.dist).toEqual([0, 0, 1, 1, 1]);
-    expect(toStats(emptyBucket())).toMatchObject({ withinSlaPercent: null, ratingAverage: null, firstResponseMedianMinutes: null });
+    expect(toStats(emptyBucket())).toMatchObject({
+      withinSlaPercent: null,
+      ratingAverage: null,
+      firstResponseMedianMinutes: null,
+    });
   });
 });

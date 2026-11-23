@@ -32,6 +32,10 @@ export const createUserAccessRevoker = (redis: Redis) => {
     leaveTeam: (userId: string, teamId: string): void => {
       emitter.in(rooms.user(userId)).socketsLeave(rooms.team(teamId));
     },
+    /** Cuts the sockets of one login session (logout on one device) on every api copy. */
+    disconnectSession: (sessionId: string): void => {
+      emitter.in(rooms.session(sessionId)).disconnectSockets(true);
+    },
     disconnectUser: (userId: string): void => {
       emitter.in(rooms.user(userId)).disconnectSockets(true);
     },

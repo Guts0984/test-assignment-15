@@ -132,22 +132,44 @@ export const searchTickets = async (
       )
     ).map((r) => ({ ...toListItem(r), snippet: null as string | null }));
   }
-  // Candidates first, capped: a very common word can match millions of messages, and only the newest page is shown.
-  // The cap is taken on the message index alone (fast), then the team filter and the ordering are applied to the candidates.
-  // Team-scoped searches look at more candidates so other teams' messages do not crowd the result out.
-  const cap = teams === null ? SEARCH_CANDIDATE_CAP : SEARCH_CANDIDATE_CAP * 4;
-  const rows = await db.$queryRawUnsafe<(Row & { snippet: string | null })[]>(
-    `WITH cand AS (
-            (SELECT m.ticket_id AS id FROM messages m WHERE m.search_vector @@ websearch_to_tsquery('simple', $1) AND m.cancelled_at IS NULL LIMIT ${cap})
-            UNION
-            (SELECT t.id FROM tickets t WHERE t.subject_vector @@ websearch_to_tsquery('simple', $1) LIMIT ${cap})
-          )
-     SELECT ${COLS}, NULL::text AS snippet
-       FROM cand h JOIN tickets t ON t.id = h.id JOIN customers c ON c.id = t.customer_id LEFT JOIN users u ON u.id = t.assignee_id
-      WHERE ($2::uuid[] IS NULL OR t.team_id = ANY($2::uuid[]))
-      ORDER BY t.updated_at DESC LIMIT $3 OFFSET $4`,
-    q, teams, limit, offset,
+  // Rare words: the message index returns every match (below the cap), which is then filtered by team and ordered.
+  // Common words: the index would return an arbitrary sample, so instead tickets are walked newest-first (index on
+  // updated_at) and the walk stops after one page; the newest matching tickets are exact and it stays fast because
+  // matches are dense. `counted` tells which of the two applies.
+  const counted = await db.$queryRawUnsafe<{ n: number }[]>(
+    `SELECT (SELECT count(*) FROM (SELECT 1 FROM messages m WHERE m.search_vector @@ websearch_to_tsquery('simple', $1) AND m.cancelled_at IS NULL LIMIT ${SEARCH_CANDIDATE_CAP + 1}) x)::int
+          + (SELECT count(*) FROM (SELECT 1 FROM tickets t WHERE t.subject_vector @@ websearch_to_tsquery('simple', $1) LIMIT ${SEARCH_CANDIDATE_CAP + 1}) y)::int AS n`,
+    q,
   );
+  const common = (counted[0]?.n ?? 0) > SEARCH_CANDIDATE_CAP;
+  const rows = common
+    ? await db.$queryRawUnsafe<(Row & { snippet: string | null })[]>(
+        `SELECT ${COLS}, NULL::text AS snippet
+           FROM tickets t JOIN customers c ON c.id = t.customer_id LEFT JOIN users u ON u.id = t.assignee_id
+          WHERE ${cond}
+            AND (t.subject_vector @@ websearch_to_tsquery('simple', $1)
+                 OR EXISTS (SELECT 1 FROM messages m WHERE m.ticket_id = t.id AND m.cancelled_at IS NULL AND m.search_vector @@ websearch_to_tsquery('simple', $1)))
+          ORDER BY t.updated_at DESC LIMIT $3 OFFSET $4`,
+        q,
+        teams,
+        limit,
+        offset,
+      )
+    : await db.$queryRawUnsafe<(Row & { snippet: string | null })[]>(
+        `WITH cand AS (
+                (SELECT m.ticket_id AS id FROM messages m WHERE m.search_vector @@ websearch_to_tsquery('simple', $1) AND m.cancelled_at IS NULL)
+                UNION
+                (SELECT t.id FROM tickets t WHERE t.subject_vector @@ websearch_to_tsquery('simple', $1))
+              )
+         SELECT ${COLS}, NULL::text AS snippet
+           FROM cand h JOIN tickets t ON t.id = h.id JOIN customers c ON c.id = t.customer_id LEFT JOIN users u ON u.id = t.assignee_id
+          WHERE ${cond}
+          ORDER BY t.updated_at DESC LIMIT $3 OFFSET $4`,
+        q,
+        teams,
+        limit,
+        offset,
+      );
   const byName =
     rows.length >= limit
       ? []
@@ -223,14 +245,35 @@ export type ReportFilter = {
 };
 
 type GroupRow = {
-  team_id: string; team_name: string; assignee_id: string | null; assignee_name: string | null; tickets: bigint;
-  fr: number[] | null; res: number[] | null; decided: bigint; within: bigint; breaches: bigint; rating_sum: bigint | null; rating_count: bigint;
-  r1: bigint; r2: bigint; r3: bigint; r4: bigint; r5: bigint;
+  team_id: string;
+  team_name: string;
+  assignee_id: string | null;
+  assignee_name: string | null;
+  tickets: bigint;
+  fr: number[] | null;
+  res: number[] | null;
+  decided: bigint;
+  within: bigint;
+  breaches: bigint;
+  rating_sum: bigint | null;
+  rating_count: bigint;
+  r1: bigint;
+  r2: bigint;
+  r3: bigint;
+  r4: bigint;
+  r5: bigint;
 };
 
 const toBucket = (r: GroupRow): Bucket => ({
-  tickets: Number(r.tickets), fr: (r.fr ?? []).map(Number), res: (r.res ?? []).map(Number), decided: Number(r.decided), within: Number(r.within), breaches: Number(r.breaches),
-  ratingSum: Number(r.rating_sum ?? 0n), ratingCount: Number(r.rating_count), dist: [Number(r.r1), Number(r.r2), Number(r.r3), Number(r.r4), Number(r.r5)],
+  tickets: Number(r.tickets),
+  fr: (r.fr ?? []).map(Number),
+  res: (r.res ?? []).map(Number),
+  decided: Number(r.decided),
+  within: Number(r.within),
+  breaches: Number(r.breaches),
+  ratingSum: Number(r.rating_sum ?? 0n),
+  ratingCount: Number(r.rating_count),
+  dist: [Number(r.r1), Number(r.r2), Number(r.r3), Number(r.r4), Number(r.r5)],
 });
 
 /**
@@ -264,7 +307,11 @@ export const periodReport = async (db: Queryable, f: ReportFilter) => {
         GROUP BY t.team_id, t.assignee_id
      )
      SELECT g.*, tm.name AS team_name, u.name AS assignee_name FROM g JOIN teams tm ON tm.id = g.team_id LEFT JOIN users u ON u.id = g.assignee_id`,
-    f.from, f.to, f.teamIds === null ? null : [...f.teamIds], f.agentId, f.priority,
+    f.from,
+    f.to,
+    f.teamIds === null ? null : [...f.teamIds],
+    f.agentId,
+    f.priority,
   );
   const total = emptyBucket();
   const teams = new Map<string, { name: string; b: Bucket }>();
@@ -282,8 +329,18 @@ export const periodReport = async (db: Queryable, f: ReportFilter) => {
   }
   return {
     total: toStats(total),
-    byTeam: [...teams].map(([teamId, v]) => ({ teamId, teamName: v.name, ...toStats(v.b) })).sort((a, b) => a.teamName.localeCompare(b.teamName)),
-    byAgent: [...agents].map(([id, v]) => ({ agentId: id === 'none' ? null : id, agentName: v.name, ...toStats(v.b) })).sort((a, b) => a.agentName.localeCompare(b.agentName)),
-    ratingDistribution: total.dist.map((count, i) => ({ rating: i + 1, count })).filter((d) => d.count > 0),
+    byTeam: [...teams]
+      .map(([teamId, v]) => ({ teamId, teamName: v.name, ...toStats(v.b) }))
+      .sort((a, b) => a.teamName.localeCompare(b.teamName)),
+    byAgent: [...agents]
+      .map(([id, v]) => ({
+        agentId: id === 'none' ? null : id,
+        agentName: v.name,
+        ...toStats(v.b),
+      }))
+      .sort((a, b) => a.agentName.localeCompare(b.agentName)),
+    ratingDistribution: total.dist
+      .map((count, i) => ({ rating: i + 1, count }))
+      .filter((d) => d.count > 0),
   };
 };

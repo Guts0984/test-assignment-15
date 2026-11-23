@@ -5,7 +5,6 @@ import { verifyPassword } from '../../infra/password';
 import { hashToken, randomToken } from './domain/crypto';
 import { signAccessToken } from './domain/jwt';
 import {
-  bumpTokenVersion,
   consumeRefreshToken,
   findRefreshToken,
   findUserByEmail,
@@ -57,7 +56,7 @@ export const createAuth = (d: AuthDeps) => {
     });
     const accessToken = await signAccessToken(
       d.jwtSecret,
-      { userId, version, role },
+      { userId, version, role, sessionId: familyId },
       now,
       d.accessTtlSeconds,
     );
@@ -95,14 +94,13 @@ export const createAuth = (d: AuthDeps) => {
     },
 
     /** Revokes the refresh family and invalidates outstanding access tokens by bumping the user's token version. */
+    /** Ends this login session only (its refresh family); other devices stay signed in. Returns the session id. */
     logout: async (token: string | null): Promise<string | null> => {
       if (token === null) return null;
       const known = await findRefreshToken(d.db, hashToken(token));
       if (known === null) return null;
-      const now = d.clock.now();
-      await revokeFamily(d.db, known.familyId, now);
-      await bumpTokenVersion(d.db, known.userId);
-      return known.userId;
+      await revokeFamily(d.db, known.familyId, d.clock.now());
+      return known.familyId;
     },
 
     me: (userId: string): Promise<UserView | null> => loadUserView(d.db, userId),

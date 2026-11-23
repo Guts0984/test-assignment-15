@@ -24,7 +24,12 @@ describe('tokens', () => {
 });
 
 describe('access tokens', () => {
-  const claims = { userId: 'u1', version: 3, role: 'staff' as const };
+  const claims = {
+    userId: 'u1',
+    version: 3,
+    role: 'staff' as const,
+    sessionId: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
+  };
 
   it('round-trips and rejects after expiry using the injected clock', async () => {
     const t = await signAccessToken(SECRET, claims, now, 900);

@@ -21,7 +21,12 @@ describe('ttl cache', () => {
       await new Promise((r) => setTimeout(r, 20));
       return calls;
     };
-    const results = await Promise.all([c.get('x', slow), c.get('x', slow), c.get('x', slow), c.get('y', slow)]);
+    const results = await Promise.all([
+      c.get('x', slow),
+      c.get('x', slow),
+      c.get('x', slow),
+      c.get('y', slow),
+    ]);
     expect(calls).toBe(2);
     expect(results.slice(0, 3)).toEqual([results[0], results[0], results[0]]);
   });

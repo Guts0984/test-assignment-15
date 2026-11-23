@@ -284,6 +284,21 @@ describe('search, dashboard and reports', () => {
     }
   });
 
+  it('a very common word lists the newest matching tickets first, not a sample (review F7)', async () => {
+    const w = await world();
+    const word = `zq${uniq('c').replace('-', '')}`;
+    const older = await receiveTicket(api, w.box, { text: `old ${word}` });
+    // more matching messages than the candidate cap, all on the older ticket
+    await db.$executeRaw`INSERT INTO messages (id, ticket_id, seq, kind, direction, author_kind, body, created_at)
+      SELECT gen_random_uuid(), ${older.ticketId}::uuid, 100 + g, 'note', 'internal', 'agent', ${`filler ${word}`}, now()
+        FROM generate_series(1, 2100) g`;
+    const newest = await receiveTicket(api, w.box, { text: `new ${word}` });
+    const found = (await w.agent.client.get(`/api/v1/search?q=${word}`)).json as {
+      items: { id: string }[];
+    };
+    expect(found.items.map((i) => i.id)).toEqual([newest.ticketId, older.ticketId]);
+  });
+
   it('lead dashboard: agent load, unassigned queue, at-risk and overdue; agents and other leads are refused', async () => {
     const w = await world();
     await db.ticket.update({

@@ -52,6 +52,7 @@ export const rooms = {
   team: (id: string): string => `team:${id}`,
   ticketStaff: (id: string): string => `ticket:${id}:staff`,
   ticketCustomer: (id: string): string => `ticket:${id}:customer`,
+  session: (id: string): string => `session:${id}`,
   admin: 'admin',
 } as const;
 

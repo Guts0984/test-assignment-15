@@ -70,6 +70,7 @@ export const setupRealtime = (
       void socket.join(rooms.ticketCustomer(who.ticketId));
     } else {
       void socket.join(rooms.user(who.userId));
+      void socket.join(rooms.session(who.sessionId));
       if (who.principal.kind === 'admin') void socket.join(rooms.admin);
       else if (who.principal.kind === 'staff')
         for (const m of who.principal.memberships) void socket.join(rooms.team(m.teamId));
@@ -99,7 +100,7 @@ export const setupRealtime = (
       if (who.kind !== 'staff') return false;
       // The handshake token may have expired long ago (15 min); what counts is that the account is still active
       // and the token version it was issued with is still current (logout and password changes bump it).
-      const fresh = await refreshStaffIdentity(d.db, who.userId, who.version);
+      const fresh = await refreshStaffIdentity(d.db, who.userId, who.version, who.sessionId);
       if (fresh === null) return false;
       const rows = await d.db.$queryRaw<
         { team_id: string; customer_id: string }[]

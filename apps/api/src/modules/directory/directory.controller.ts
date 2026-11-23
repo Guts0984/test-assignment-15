@@ -26,14 +26,24 @@ export class DirectoryController {
   async get(@CurrentAuth() auth: RequestAuth): Promise<DirectoryDto> {
     if (auth.kind !== 'staff') throw appError('FORBIDDEN', 'Staff access required');
     const mine = visibleTeamIds(auth.principal);
-    const teams = await this.db.$queryRaw<{ id: string; name: string; time_zone: string }[]>`SELECT id, name, time_zone FROM teams ORDER BY name`;
-    const agents = await this.db.$queryRaw<{ id: string; name: string; team_id: string; on_shift: boolean; role: string }[]>`
+    const teams = await this.db.$queryRaw<
+      { id: string; name: string; time_zone: string }[]
+    >`SELECT id, name, time_zone FROM teams ORDER BY name`;
+    const agents = await this.db.$queryRaw<
+      { id: string; name: string; team_id: string; on_shift: boolean; role: string }[]
+    >`
       SELECT u.id, u.name, m.team_id, u.on_shift, m.role FROM team_members m JOIN users u ON u.id = m.user_id
        WHERE u.is_active AND (${mine === null ? null : [...mine]}::uuid[] IS NULL OR m.team_id = ANY(${mine === null ? null : [...mine]}::uuid[]))
        ORDER BY u.name`;
     return {
       teams: teams.map((t) => ({ id: t.id, name: t.name, timeZone: t.time_zone })),
-      agents: agents.map((a) => ({ id: a.id, name: a.name, teamId: a.team_id, onShift: a.on_shift, role: a.role as 'agent' | 'lead' })),
+      agents: agents.map((a) => ({
+        id: a.id,
+        name: a.name,
+        teamId: a.team_id,
+        onShift: a.on_shift,
+        role: a.role as 'agent' | 'lead',
+      })),
     };
   }
 }

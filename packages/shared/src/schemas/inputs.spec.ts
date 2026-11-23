@@ -92,7 +92,9 @@ describe('input schemas', () => {
 
   it('a report covers at most 366 days (review F21)', () => {
     expect(reportQueryInput.safeParse({ from: '2025-01-01', to: '2026-01-01' }).success).toBe(true);
-    expect(reportQueryInput.safeParse({ from: '2000-01-01', to: '2026-01-01' }).success).toBe(false);
+    expect(reportQueryInput.safeParse({ from: '2000-01-01', to: '2026-01-01' }).success).toBe(
+      false,
+    );
   });
 
   it('team hours need a real time zone and an end after the start', () => {

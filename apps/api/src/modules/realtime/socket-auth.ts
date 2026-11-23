@@ -9,7 +9,7 @@ import {
 } from '@helpdesk/shared';
 import { resolveTicketLink } from '../auth/link-tokens';
 import { verifyAccessToken } from '../auth/domain/jwt';
-import { findUserById, loadMemberships } from '../auth/repo/auth-repo';
+import { findUserById, loadMemberships, sessionActive } from '../auth/repo/auth-repo';
 
 export type SocketIdentity =
   | {
@@ -18,6 +18,7 @@ export type SocketIdentity =
       readonly name: string;
       readonly principal: Principal;
       readonly version: number;
+      readonly sessionId: string;
     }
   | {
       readonly kind: 'customer';
@@ -51,7 +52,12 @@ export const authenticateSocket = async (
   if (typeof a['token'] !== 'string') return err('UNAUTHORIZED');
   const verified = await verifyAccessToken(d.jwtSecret, a['token'], d.clock.now());
   if (!verified.ok) return err('UNAUTHORIZED');
-  const identity = await refreshStaffIdentity(d.db, verified.value.userId, verified.value.version);
+  const identity = await refreshStaffIdentity(
+    d.db,
+    verified.value.userId,
+    verified.value.version,
+    verified.value.sessionId,
+  );
   return identity === null ? err('UNAUTHORIZED') : ok(identity);
 };
 
@@ -60,9 +66,16 @@ export const refreshStaffIdentity = async (
   db: Db,
   userId: string,
   version: number,
+  sessionId: string,
 ): Promise<Extract<SocketIdentity, { kind: 'staff' }> | null> => {
   const user = await findUserById(db, userId);
-  if (user === null || !user.isActive || user.tokenVersion !== version) return null;
+  if (
+    user === null ||
+    !user.isActive ||
+    user.tokenVersion !== version ||
+    !(await sessionActive(db, sessionId))
+  )
+    return null;
   const principal: Principal =
     user.role === 'admin'
       ? { kind: 'admin', userId: user.id }
@@ -71,5 +84,12 @@ export const refreshStaffIdentity = async (
           userId: user.id,
           memberships: (await loadMemberships(db, user.id)) as readonly Membership[],
         };
-  return { kind: 'staff', userId: user.id, name: user.name, principal, version: user.tokenVersion };
+  return {
+    kind: 'staff',
+    userId: user.id,
+    name: user.name,
+    principal,
+    version: user.tokenVersion,
+    sessionId,
+  };
 };

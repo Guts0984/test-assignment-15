@@ -1,7 +1,11 @@
 /** Small time-bound cache that also shares one in-flight computation between identical concurrent requests. */
 export type TtlCache<V> = { readonly get: (key: string, compute: () => Promise<V>) => Promise<V> };
 
-export const createTtlCache = <V>(ttlMs: number, now: () => number, maxEntries = 200): TtlCache<V> => {
+export const createTtlCache = <V>(
+  ttlMs: number,
+  now: () => number,
+  maxEntries = 200,
+): TtlCache<V> => {
   const done = new Map<string, { at: number; value: V }>();
   const inflight = new Map<string, Promise<V>>();
   return {
