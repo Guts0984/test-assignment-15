@@ -710,7 +710,7 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 - [x] All 17 acceptance checks run and recorded (§11)
 - [x] Mutation check done and recorded
 - [x] Clean-checkout verification (`.env.example` → `.env`, typecheck, lint, test, build, adversarial, compose up + smoke)
-- [ ] Working tree clean
+- [x] Working tree clean
 
 ## 10. Local CI log (per commit)
 
