@@ -70,6 +70,10 @@ jobs:
         run: cp .env.example .env
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
+      - name: Build shared packages and generate the Prisma client (the test suites import them from the host)
+        run: |
+          pnpm --filter @helpdesk/shared build
+          pnpm --filter @helpdesk/core build
       - name: Start the stack (test profile, small seed, 3 workers, test clock)
         run: docker compose -f docker-compose.yml -f docker-compose.test.yml up --build -d --wait
       - name: Stack suites (500 mails, races, kill -9, FLUSHALL, downtime, two api copies)
