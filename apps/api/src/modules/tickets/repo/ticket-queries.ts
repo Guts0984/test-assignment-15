@@ -96,6 +96,16 @@ export const getListItem = async (db: Queryable, id: string) =>
 
 /** Most matching messages considered for one search before ordering by recency. */
 export const SEARCH_CANDIDATE_CAP = 2000;
+/** How many of the newest tickets are checked first for a common word. */
+const RECENT_WINDOW = 5000;
+
+/** `websearch_to_tsquery` evaluated once and returned as a quoted constant; the text only contains quoted lexemes and operators. */
+const tsqueryLiteral = async (db: Queryable, q: string): Promise<string> => {
+  const r = await db.$queryRaw<
+    { t: string }[]
+  >`SELECT websearch_to_tsquery('simple', ${q})::text AS t`;
+  return `'${(r[0]?.t ?? '').replace(/'/g, "''")}'::tsquery`;
+};
 
 const escapeLike = (s: string): string => s.replace(/[\\%_]/g, '\\$&');
 
@@ -136,40 +146,68 @@ export const searchTickets = async (
   // Common words: the index would return an arbitrary sample, so instead tickets are walked newest-first (index on
   // updated_at) and the walk stops after one page; the newest matching tickets are exact and it stays fast because
   // matches are dense. `counted` tells which of the two applies.
-  const counted = await db.$queryRawUnsafe<{ n: number }[]>(
-    `SELECT (SELECT count(*) FROM (SELECT 1 FROM messages m WHERE m.search_vector @@ websearch_to_tsquery('simple', $1) AND m.cancelled_at IS NULL LIMIT ${SEARCH_CANDIDATE_CAP + 1}) x)::int
-          + (SELECT count(*) FROM (SELECT 1 FROM tickets t WHERE t.subject_vector @@ websearch_to_tsquery('simple', $1) LIMIT ${SEARCH_CANDIDATE_CAP + 1}) y)::int AS n`,
+  // The tsquery is inlined as a constant: with a bind parameter Postgres cannot see the word's frequency at plan
+  // time and chooses a hashed subplan that first collects every matching message (seconds for a common word).
+  const tsq = await tsqueryLiteral(db, q);
+  const count = async (table: 'messages m' | 'tickets t'): Promise<number> => {
+    const cond2 =
+      table === 'messages m'
+        ? `m.search_vector @@ ${tsq} AND m.cancelled_at IS NULL`
+        : `t.subject_vector @@ ${tsq}`;
+    const r = await db.$queryRawUnsafe<{ n: number }[]>(
+      `SELECT count(*)::int AS n FROM (SELECT 1 FROM ${table} WHERE ${cond2} LIMIT ${SEARCH_CANDIDATE_CAP + 1}) x`,
+    );
+    return r[0]?.n ?? 0;
+  };
+  const [messageHits, subjectHits] = [await count('messages m'), await count('tickets t')];
+  // Each branch returns its newest `limit + offset` tickets; the union of the two is then exact for the page asked.
+  // An OR between the two conditions would make Postgres collect every matching message first, so they stay separate.
+  // Both conditions are resolved on their own and never joined with OR: with an OR Postgres collects every matching
+  // message first (seconds for a common word). For each condition:
+  //  - few matches (up to the cap): they are materialized from the index, joined to tickets and ordered;
+  //  - many matches: the newest RECENT_WINDOW tickets are checked first. A common word fills the page from them, so
+  //    the newest matches are exact and the answer is quick; if they do not fill it (the matches are old and
+  //    scattered) the matches are materialized the same way as for a rare word.
+  const probe = async (pred: string): Promise<string[] | null> => {
+    const r = await db.$queryRawUnsafe<{ id: string }[]>(
+      `SELECT t.id FROM (SELECT t.id, t.updated_at, t.subject_vector FROM tickets t WHERE ${cond} AND $1::text IS NOT NULL
+                          ORDER BY t.updated_at DESC LIMIT ${RECENT_WINDOW}) t
+        WHERE ${pred} ORDER BY t.updated_at DESC LIMIT $3`,
+      q,
+      teams,
+      limit + offset,
+    );
+    return r.length >= limit + offset ? r.map((x) => x.id) : null;
+  };
+  const messagePred = `EXISTS (SELECT 1 FROM messages m WHERE m.ticket_id = t.id AND m.cancelled_at IS NULL AND m.search_vector @@ ${tsq})`;
+  const subjectPred = `t.subject_vector @@ ${tsq}`;
+  const recentMessages = messageHits > SEARCH_CANDIDATE_CAP ? await probe(messagePred) : null;
+  const recentSubjects = subjectHits > SEARCH_CANDIDATE_CAP ? await probe(subjectPred) : null;
+  const ctes = [
+    recentMessages !== null
+      ? `mh AS MATERIALIZED (SELECT unnest($6::uuid[]) AS id)`
+      : `mh AS MATERIALIZED (SELECT DISTINCT m.ticket_id AS id FROM messages m WHERE m.search_vector @@ ${tsq} AND m.cancelled_at IS NULL)`,
+    recentSubjects !== null
+      ? `sh AS MATERIALIZED (SELECT unnest($7::uuid[]) AS id)`
+      : `sh AS MATERIALIZED (SELECT t2.id FROM tickets t2 WHERE t2.subject_vector @@ ${tsq})`,
+  ];
+  const branch = (cte: 'mh' | 'sh'): string =>
+    `SELECT t.id, t.updated_at FROM ${cte} JOIN tickets t ON t.id = ${cte}.id WHERE ${cond} ORDER BY t.updated_at DESC LIMIT $5`;
+  const rows = await db.$queryRawUnsafe<(Row & { snippet: string | null })[]>(
+    `WITH ${[...ctes, `hits AS ((${branch('mh')}) UNION (${branch('sh')}))`].join(',\n')}
+     SELECT ${COLS}, NULL::text AS snippet
+       FROM (SELECT id, updated_at FROM hits ORDER BY updated_at DESC LIMIT $3 OFFSET $4) h
+       JOIN tickets t ON t.id = h.id JOIN customers c ON c.id = t.customer_id LEFT JOIN users u ON u.id = t.assignee_id
+      WHERE $1::text IS NOT NULL AND $6::uuid[] IS NOT NULL AND $7::uuid[] IS NOT NULL
+      ORDER BY t.updated_at DESC`,
     q,
+    teams,
+    limit,
+    offset,
+    limit + offset,
+    recentMessages ?? [],
+    recentSubjects ?? [],
   );
-  const common = (counted[0]?.n ?? 0) > SEARCH_CANDIDATE_CAP;
-  const rows = common
-    ? await db.$queryRawUnsafe<(Row & { snippet: string | null })[]>(
-        `SELECT ${COLS}, NULL::text AS snippet
-           FROM tickets t JOIN customers c ON c.id = t.customer_id LEFT JOIN users u ON u.id = t.assignee_id
-          WHERE ${cond}
-            AND (t.subject_vector @@ websearch_to_tsquery('simple', $1)
-                 OR EXISTS (SELECT 1 FROM messages m WHERE m.ticket_id = t.id AND m.cancelled_at IS NULL AND m.search_vector @@ websearch_to_tsquery('simple', $1)))
-          ORDER BY t.updated_at DESC LIMIT $3 OFFSET $4`,
-        q,
-        teams,
-        limit,
-        offset,
-      )
-    : await db.$queryRawUnsafe<(Row & { snippet: string | null })[]>(
-        `WITH cand AS (
-                (SELECT m.ticket_id AS id FROM messages m WHERE m.search_vector @@ websearch_to_tsquery('simple', $1) AND m.cancelled_at IS NULL)
-                UNION
-                (SELECT t.id FROM tickets t WHERE t.subject_vector @@ websearch_to_tsquery('simple', $1))
-              )
-         SELECT ${COLS}, NULL::text AS snippet
-           FROM cand h JOIN tickets t ON t.id = h.id JOIN customers c ON c.id = t.customer_id LEFT JOIN users u ON u.id = t.assignee_id
-          WHERE ${cond}
-          ORDER BY t.updated_at DESC LIMIT $3 OFFSET $4`,
-        q,
-        teams,
-        limit,
-        offset,
-      );
   const byName =
     rows.length >= limit
       ? []

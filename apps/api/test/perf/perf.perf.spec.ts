@@ -58,8 +58,13 @@ const measure = async (
 
 describe('performance budgets on the full seed (through nginx)', () => {
   it('seed is the full profile', async () => {
-    expect(await db.ticket.count()).toBe(500_000);
-    expect(await db.message.count()).toBe(3_000_000);
+    // The seed is exact; a few tickets created by later use of the stack must not fail the size check.
+    const tickets = await db.ticket.count();
+    const messages = await db.message.count();
+    expect(tickets).toBeGreaterThanOrEqual(500_000);
+    expect(tickets).toBeLessThan(500_100);
+    expect(messages).toBeGreaterThanOrEqual(3_000_000);
+    expect(messages).toBeLessThan(3_000_500);
   });
 
   it('text search over correspondence is under 300 ms (terms in about 0.1-1% of messages), also for number and e-mail searches', async () => {

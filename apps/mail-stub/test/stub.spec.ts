@@ -279,3 +279,25 @@ describe('abusive SMTP clients (review F9)', () => {
     expect(count).toBe(1);
   });
 });
+
+describe('repeated Message-ID (review F6)', () => {
+  beforeEach(() => launch({ enabled: false }));
+
+  it('acknowledges but does not store a second delivery of the same Message-ID to the same recipient', async () => {
+    const mail = {
+      from: 'helpdesk@helpdesk.test',
+      to: 'cust@customer.test',
+      subject: 'Answer',
+      text: 'once',
+      messageId: '<same-id@helpdesk.test>',
+    };
+    await smtp().sendMail(mail);
+    await smtp().sendMail(mail);
+    await smtp().sendMail({ ...mail, to: 'other@customer.test' });
+    const list = (await (await api('/api/messages')).json()) as
+      { messages?: unknown[] } | unknown[];
+    const count = Array.isArray(list) ? list.length : (list.messages?.length ?? 0);
+    expect(count).toBe(2);
+    expect(stub.stats.duplicates).toBe(1);
+  });
+});

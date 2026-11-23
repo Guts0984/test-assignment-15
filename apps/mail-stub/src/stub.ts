@@ -14,6 +14,8 @@ export type StubOptions = {
   readonly mailDomain: string;
   readonly maxMessages: number;
   readonly chaos: ChaosSettings;
+  /** Acknowledge but do not store a repeated Message-ID for the same recipients (default true). */
+  readonly dedupeMessageId?: boolean;
   readonly deliverer?: Deliverer;
 };
 
@@ -30,7 +32,7 @@ const addressOf = (s: string): string => /<([^>]+)>/.exec(s)?.[1] ?? s.trim();
 export const startStub = async (o: StubOptions): Promise<RunningStub> => {
   const store = createStore(o.maxMessages);
   const chaos = createChaos(o.chaos);
-  const stats: SmtpStats = { transactions: 0, failed: 0, delivered: 0 };
+  const stats: SmtpStats = { transactions: 0, failed: 0, delivered: 0, duplicates: 0 };
   const deliverer = o.deliverer ?? createDeliverer({ url: o.inboundUrl, secret: o.inboundSecret });
 
   // Chaos: sometimes the customer's mail system answers a sent email with an autoreply or a bounce.
@@ -74,6 +76,7 @@ export const startStub = async (o: StubOptions): Promise<RunningStub> => {
     now: () => new Date(),
     onAccepted: respond,
     stats,
+    dedupeMessageId: o.dedupeMessageId ?? true,
   });
   // The SMTP server emits `error` for socket-level problems such as ECONNRESET; without a listener Node would exit
   // and every stored message would be lost.

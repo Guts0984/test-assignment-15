@@ -8,6 +8,7 @@ void startStub({
   inboundSecret: env.INBOUND_WEBHOOK_SECRET,
   mailDomain: env.MAIL_DOMAIN,
   maxMessages: env.MAIL_STUB_MAX_MESSAGES,
+  dedupeMessageId: env.MAIL_STUB_DEDUPE_MESSAGE_ID,
   chaos: {
     enabled: env.MAIL_CHAOS,
     seed: env.MAIL_CHAOS_SEED,

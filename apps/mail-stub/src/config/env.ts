@@ -13,6 +13,7 @@ export const envSchema = z.object({
   MAIL_STUB_MAX_MESSAGES: intStr(50_000),
   INBOUND_WEBHOOK_SECRET: z.string().min(16),
   MAIL_CHAOS: envBool.default('false'),
+  MAIL_STUB_DEDUPE_MESSAGE_ID: envBool.default('true'),
   MAIL_CHAOS_SMTP_FAIL_EVERY: intStr(10),
   MAIL_CHAOS_AUTOREPLY_RATE: z.coerce.number().min(0).max(1).default(0.1),
   MAIL_CHAOS_SEED: intStr(1),
