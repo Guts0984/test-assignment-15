@@ -226,24 +226,24 @@ export const applyInbound = async (
 
 /**
  * Processes one stored inbound mail exactly once: it claims the row (`FOR UPDATE SKIP LOCKED`, still pending),
- * does all domain writes and marks it processed in one transaction. A crash anywhere rolls everything back.
+ * does all domain writes and marks it processed in the caller's transaction. A crash anywhere rolls everything back.
  */
+export const processInboundTx = async (c: Ctx, inboundId: string): Promise<IngestOutcome> => {
+  const rows = await c.tx.$queryRaw<InboundRow[]>`
+    SELECT id, mailbox_address, raw FROM inbound_messages WHERE id = ${inboundId}::uuid AND state = 'pending' FOR UPDATE SKIP LOCKED`;
+  const row = rows[0];
+  if (row === undefined) return { kind: 'skipped' } as const;
+  const parsed = await parseRawMail(Buffer.from(row.raw), c.cfg.maxAttachmentBytes);
+  if (!parsed.ok) {
+    await setInbound(c, row.id, 'rejected', null, parsed.error);
+    return { kind: 'rejected', reason: parsed.error } as const;
+  }
+  return applyInbound(c, row.id, row.mailbox_address, parsed.value);
+};
+
 export const processInbound = async (
   db: Db,
   inboundId: string,
   now: Date,
   cfg: TicketConfig,
-): Promise<IngestOutcome> =>
-  inTx(db, async (tx) => {
-    const rows = await tx.$queryRaw<InboundRow[]>`
-      SELECT id, mailbox_address, raw FROM inbound_messages WHERE id = ${inboundId}::uuid AND state = 'pending' FOR UPDATE SKIP LOCKED`;
-    const row = rows[0];
-    if (row === undefined) return { kind: 'skipped' } as const;
-    const c: Ctx = { tx, now, cfg };
-    const parsed = await parseRawMail(Buffer.from(row.raw), cfg.maxAttachmentBytes);
-    if (!parsed.ok) {
-      await setInbound(c, row.id, 'rejected', null, parsed.error);
-      return { kind: 'rejected', reason: parsed.error } as const;
-    }
-    return applyInbound(c, row.id, row.mailbox_address, parsed.value);
-  });
+): Promise<IngestOutcome> => inTx(db, (tx) => processInboundTx({ tx, now, cfg }, inboundId));

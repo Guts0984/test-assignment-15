@@ -4,7 +4,9 @@ import { AppModule } from './app.module';
 import './config/env';
 
 const bootstrap = async (): Promise<void> => {
-  const app = await NestFactory.createApplicationContext(AppModule);
+  const app = await NestFactory.createApplicationContext(AppModule, {
+    logger: ['error', 'warn', 'log'],
+  });
   app.enableShutdownHooks();
 };
 

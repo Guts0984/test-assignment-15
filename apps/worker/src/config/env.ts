@@ -20,7 +20,7 @@ export const envSchema = z
     UNDO_SEND_SECONDS: intStr(10),
     SLA_WARNING_RATIO: z.coerce.number().min(0.01).max(0.99).default(0.8),
     WORKER_CONCURRENCY: intStr(10),
-    RECONCILE_INTERVAL_MS: intStr(5000),
+    RECONCILE_INTERVAL_MS: intStr(1000),
     RECONCILE_HORIZON_MS: intStr(600_000),
     JOB_MAX_ATTEMPTS: intStr(8),
     JOB_BACKOFF_BASE_MS: intStr(1000),

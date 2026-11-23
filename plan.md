@@ -349,6 +349,12 @@ Every item below is copied into the README "Decisions" section (checked by `ACC:
 
 - **A-83 Mail stub behaviour (B7).** SMTP sink on `MAIL_STUB_SMTP_PORT` (no auth, no TLS), HTTP on `MAIL_STUB_HTTP_PORT`: `GET /` page (every message with all headers, HTML-escaped, plus the "Send inbound email" form), `GET/DELETE /api/messages`, `GET /api/stats`, `GET/PUT /api/chaos`, `POST /api/inbound` (JSON -> signed raw RFC 822 -> `MAIL_STUB_INBOUND_URL`). Chaos: every `MAIL_CHAOS_SMTP_FAIL_EVERY`-th SMTP transaction (counted over all attempts, including retries) is answered `451 4.3.0` and not stored; each inbound mail is posted twice concurrently with identical bytes; with probability `MAIL_CHAOS_AUTOREPLY_RATE` (seeded PRNG) an accepted outbound mail triggers an autoreply (`Auto-Submitted: auto-replied`, from the customer address) or a bounce (`MAILER-DAEMON`, `Return-Path: <>`, DSN content type), alternating, both with `In-Reply-To` of the sent mail.
 
+- **A-84 Job execution (B8).** A BullMQ message is only a pointer `{jobId}`; the `jobs` row decides. `runTxJob` claims the row (`FOR UPDATE SKIP LOCKED`, pending and due) and the handler's domain writes plus the `done` mark commit in one transaction, so duplicate messages, three workers, or a crash cannot apply an effect twice. Failures roll back, then `attempts+1` and `run_at = now + min(base*2^attempts, max)` with 50-100% jitter are recorded in Postgres (so the attempt count survives `FLUSHALL`); at `JOB_MAX_ATTEMPTS` the row becomes `dead` (Admin: failed jobs, retry). Handlers: `inbound_process`, `assign_team` (200 tickets per transaction, `again` flag for the rest), `sla_warning`, `sla_breach` (a breach first emits a missed warning), `auto_close`, `outbound_send`.
+- **A-85 Outbound send** is its own state machine (`scheduled -> sending (lease) -> sent | failed | scheduled again`). The claim is one conditional UPDATE using the same clock and `send_after` as undo, so cancel and send cannot both win. Transient SMTP errors (4xx, network) back off and retry with the same Message-ID; 5xx marks the email `failed` and the job `dead`. Known gap (documented): a crash between the SMTP `250` and the `sent` commit can resend once after the lease expires. The reply becomes visible to the customer (`released_at`) when it is sent.
+- **A-86 Reconciler** (every `RECONCILE_INTERVAL_MS`, default 1 s, in every worker): re-creates BullMQ copies of pending jobs due within `RECONCILE_HORIZON_MS` with deterministic ids `j<id>_<attempts>_<clockGeneration>` (adding twice is a no-op), detects an emptied Redis with a sentinel key (`SET NX`), drains and rebuilds after a test-clock change, and re-derives missing durable rows (queued tickets with a free agent, pending inbound mail, unsent outbound mail). BullMQ messages are removed on completion; stalled-job recovery is tightened (5 s) for `kill -9`.
+- **A-87 Assignment** takes tickets of a team most urgent first under a per-team advisory lock and a row lock with `SKIP LOCKED`, picks with the shared `selectAgent`, and relies on the agent-load trigger as the final guard. Resolving/closing/transferring/removing requests a new run, so freed slots are filled within about a second.
+- **A-88 Notifications.** SLA warnings create `notifications` rows for the assignee (team leads when unassigned); breaches create escalations for every active lead of the team. (Read API and realtime push arrive with the realtime block.)
+
 ---
 
 ## 4. Architecture
@@ -681,7 +687,7 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 - [x] B5 api core: auth, magic links, error format, OpenAPI + client, admin
 - [x] B6 ticket domain in api
 - [x] B7 mail stub
-- [ ] B8 worker + reconciler
+- [x] B8 worker + reconciler
 - [ ] B9 realtime
 - [ ] B10 web
 - [ ] B11 nginx + full compose + adversarial + e2e + acceptance + perf
@@ -701,7 +707,8 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 | B4 | 6e30fd3 | ok | ok | ok | n/a | ok (25 api incl. small seed) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN; full seed run once: 412 s, exact counts via `scripts/acceptance/check-seed.sh` |
 | B5 | 5243132 | ok | ok | ok | ok (regenerated = staged) | ok (api 89 + 4 serial, core 28, shared 149) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 | B6 | db4b7d1 | ok | ok | ok | ok | ok (shared 156, core 79, api 135+4 serial) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
-| B7 | (see git log) | ok | ok | ok | ok | ok (mail-stub 18) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
+| B7 | df27349 | ok | ok | ok | ok | ok (mail-stub 18) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
+| B8 | (see git log) | ok | ok | ok | ok | ok (core 96, worker 7+2) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 
 ## 11. Acceptance and performance results
 

@@ -142,3 +142,41 @@ export const ticketOf = (db: Db, id: string): ReturnType<Db['ticket']['findUniqu
   db.ticket.findUniqueOrThrow({ where: { id } });
 export const eventsOf = (db: Db, ticketId: string): ReturnType<Db['ticketEvent']['findMany']> =>
   db.ticketEvent.findMany({ where: { ticketId }, orderBy: { id: 'asc' } });
+
+import { createTicket } from '../../src/index';
+
+/** A fresh ticket created through the real use-case (timers, history, ack included). */
+export const newTicket = async (
+  db: Db,
+  teamId: string,
+  o: {
+    email?: string;
+    priority?: 'urgent' | 'high' | 'normal' | 'low';
+    now?: Date;
+    language?: 'en' | 'uk' | 'pl' | 'de';
+    ack?: boolean;
+  } = {},
+): Promise<{ ticketId: string; number: number; email: string }> => {
+  const email = o.email ?? `${uniq('cust')}@customer.test`;
+  const r = await run(db, o.now ?? T0, async (c) => ({
+    ok: true as const,
+    value: await createTicket(c, {
+      customerEmail: email,
+      customerName: 'Cust',
+      subject: 'Subject',
+      body: 'body',
+      source: 'web',
+      mailboxAddress: null,
+      teamId,
+      priority: o.priority ?? 'normal',
+      language: o.language ?? 'en',
+      rfcMessageId: `${uniq('mid')}@x.test`,
+      inboundMessageId: null,
+      followUpOfId: null,
+      attachments: [],
+      suppressAcknowledgement: o.ack !== true,
+    }),
+  }));
+  if (!r.ok) throw new Error('ticket setup failed');
+  return { ...r.value, email };
+};

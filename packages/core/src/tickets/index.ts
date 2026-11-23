@@ -11,7 +11,7 @@ export {
 } from './customer-message';
 export { changePriority, changeStatus, changeTeam, takeTicket, transferTicket } from './commands';
 export { closeResolvedTicket } from './close';
-export { applyInbound, processInbound, type IngestOutcome } from './ingest';
+export { applyInbound, processInbound, processInboundTx, type IngestOutcome } from './ingest';
 export { parseRawMail, quickMessageId, type ParsedMail, type ParseFailure } from './mail-parse';
 export { mergeTickets, type MergeResult } from './merge';
 export { newLinkToken, queueOutbound, createTicketLinkTx, type QueueOutbound } from './outbound';
