@@ -10,10 +10,16 @@
   },
   "dependencies": {
     "@helpdesk/shared": "workspace:*",
+    "mailparser": "^3.15.0",
+    "smtp-server": "^3.21.7",
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/mailparser": "^3.9.0",
     "@types/node": "^24.0.0",
+    "@types/nodemailer": "^8.0.2",
+    "@types/smtp-server": "^3.5.13",
+    "nodemailer": "^10.6.1",
     "typescript": "~5.9.3",
     "vitest": "^3.2.7"
   }

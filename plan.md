@@ -347,6 +347,8 @@ Every item below is copied into the README "Decisions" section (checked by `ACC:
 - **A-81 Search** (`GET /search`): `#number` or 4-12 digits = ticket number; text with `@` = customer email substring (trigram); otherwise `websearch_to_tsquery('simple')` over messages (notes included for staff) and subjects, then customer name. Newest-updated first, offset cursor, scoped to the caller's teams.
 - **A-82 TypeScript module settings.** `tsconfig.base.json` uses `module: ESNext` + `moduleResolution: Bundler` for typecheck and the editor; the `tsconfig.build.json` files of the CommonJS packages override to `commonjs`/`node10` for emit only (avoids the editor's node10 deprecation warning). The Prisma 6 `datasource url` is kept; `.vscode/settings.json` pins the Prisma extension to Prisma 6 so it does not apply Prisma 7 schema rules.
 
+- **A-83 Mail stub behaviour (B7).** SMTP sink on `MAIL_STUB_SMTP_PORT` (no auth, no TLS), HTTP on `MAIL_STUB_HTTP_PORT`: `GET /` page (every message with all headers, HTML-escaped, plus the "Send inbound email" form), `GET/DELETE /api/messages`, `GET /api/stats`, `GET/PUT /api/chaos`, `POST /api/inbound` (JSON -> signed raw RFC 822 -> `MAIL_STUB_INBOUND_URL`). Chaos: every `MAIL_CHAOS_SMTP_FAIL_EVERY`-th SMTP transaction (counted over all attempts, including retries) is answered `451 4.3.0` and not stored; each inbound mail is posted twice concurrently with identical bytes; with probability `MAIL_CHAOS_AUTOREPLY_RATE` (seeded PRNG) an accepted outbound mail triggers an autoreply (`Auto-Submitted: auto-replied`, from the customer address) or a bounce (`MAILER-DAEMON`, `Return-Path: <>`, DSN content type), alternating, both with `In-Reply-To` of the sent mail.
+
 ---
 
 ## 4. Architecture
@@ -678,7 +680,7 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 - [x] B4 seed (full / small / none)
 - [x] B5 api core: auth, magic links, error format, OpenAPI + client, admin
 - [x] B6 ticket domain in api
-- [ ] B7 mail stub
+- [x] B7 mail stub
 - [ ] B8 worker + reconciler
 - [ ] B9 realtime
 - [ ] B10 web
@@ -698,7 +700,8 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 | B3 | be091d0 | ok | ok | ok | n/a | ok (24 db) | ok (real postgres) | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 | B4 | 6e30fd3 | ok | ok | ok | n/a | ok (25 api incl. small seed) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN; full seed run once: 412 s, exact counts via `scripts/acceptance/check-seed.sh` |
 | B5 | 5243132 | ok | ok | ok | ok (regenerated = staged) | ok (api 89 + 4 serial, core 28, shared 149) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
-| B6 | (see git log) | ok | ok | ok | ok | ok (shared 156, core 79, api 135+4 serial) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
+| B6 | db4b7d1 | ok | ok | ok | ok | ok (shared 156, core 79, api 135+4 serial) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
+| B7 | (see git log) | ok | ok | ok | ok | ok (mail-stub 18) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 
 ## 11. Acceptance and performance results
 
