@@ -1,5 +1,6 @@
 import type { Db } from '../db/client';
 import { inTx } from '../db/client';
+import { flushCollector, collectorOf, type RealtimePublisher } from '../realtime/collector';
 import { appendTicketEvent } from '../events/ticket-events';
 import { backoffMs, type RetryPolicy, type RunOutcome } from './runner';
 
@@ -56,6 +57,7 @@ export const runOutboundJob = async (
     defaultFrom: string;
     send: SendFn;
     policy: RetryPolicy;
+    publisher?: RealtimePublisher | null;
   },
 ): Promise<RunOutcome> => {
   const { now } = a;
@@ -96,12 +98,20 @@ export const runOutboundJob = async (
     }));
 
   if (result.ok) {
+    const sentTx: { tx: Parameters<Parameters<typeof inTx>[1]>[0] | null } = { tx: null };
     await inTx(db, async (tx) => {
+      sentTx.tx = tx;
       await tx.$executeRaw`UPDATE outbound_emails SET state = 'sent', sent_at = ${now}, lease_until = NULL, last_error = NULL WHERE id = ${row.id}::uuid AND state = 'sending'`;
       if (row.message_id !== null)
         await tx.$executeRaw`UPDATE messages SET released_at = ${now} WHERE id = ${row.message_id}::uuid AND released_at IS NULL`;
       await tx.$executeRaw`UPDATE jobs SET status = 'done', completed_at = ${now}, attempts = attempts + 1 WHERE id = ${BigInt(a.jobId)}`;
+      if (row.message_id !== null) {
+        collectorOf(tx).messages.add(row.message_id);
+        collectorOf(tx).updated.add(row.ticket_id);
+      }
     });
+    if (a.publisher != null && sentTx.tx !== null)
+      await flushCollector(db, collectorOf(sentTx.tx), a.publisher).catch(() => undefined);
     return 'done';
   }
 

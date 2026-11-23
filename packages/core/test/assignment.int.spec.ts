@@ -163,16 +163,14 @@ describe('INV-2 in the worker: auto-assignment racing "take it"', () => {
     await Promise.all([
       assignAll(team.id, 5),
       assignAll(team.id, 7),
-      ...tickets
-        .slice(0, 30)
-        .map((t, i) =>
-          run(db, T0, (c) =>
-            takeTicket(c, {
-              ticketId: t.ticketId,
-              actor: taker(agents[i % 4] ?? (agents[0] as { id: string })),
-            }),
-          ),
+      ...tickets.slice(0, 30).map((t, i) =>
+        run(db, T0, (c) =>
+          takeTicket(c, {
+            ticketId: t.ticketId,
+            actor: taker(agents[i % 4] ?? (agents[0] as { id: string })),
+          }),
         ),
+      ),
     ]);
     await assignAll(team.id);
     const owned = await db.ticket.findMany({ where: { teamId: team.id } });

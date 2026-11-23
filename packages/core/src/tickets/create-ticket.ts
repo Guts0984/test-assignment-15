@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { requestTeamAssignment } from '../jobs/jobs';
 import type { Priority, Language } from '@helpdesk/shared';
+import { collectorOf } from '../realtime/collector';
 import { history, insertAttachments, insertMessage } from './store';
 import { queueOutbound } from './outbound';
 import { syncSla } from './sla-sync';
@@ -49,6 +50,7 @@ export const createTicket = async (c: Ctx, i: CreateTicketInput): Promise<Create
             ${customerId}::uuid, ${i.mailboxAddress}, ${i.followUpOfId}::uuid, 1, 0, ${c.now}, ${c.now}, ${c.now}, ${c.now})
     RETURNING number`;
   const number = Number(numbers[0]?.number ?? 0);
+  collectorOf(c.tx).created.add(ticketId);
   const msg = await insertMessage(c.tx, {
     ticketId,
     kind: 'public',

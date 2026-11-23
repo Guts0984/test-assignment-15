@@ -1,8 +1,14 @@
+import { Logger } from '@nestjs/common';
 import {
+  collectorOf,
   dbBusinessError,
+  flushCollector,
   inTx,
+  newCollector,
   type Ctx,
   type Db,
+  type RealtimePublisher,
+  type Tx,
   type TicketConfig,
   type TicketError,
 } from '@helpdesk/core';
@@ -23,6 +29,7 @@ export type TicketServiceDeps = {
   readonly db: Db;
   readonly clock: Clock;
   readonly cfg: TicketConfig;
+  readonly publisher: RealtimePublisher;
 };
 
 export type TicketBrief = TicketScope & {
@@ -38,6 +45,10 @@ const DB_CODES = {
 } as const;
 
 /** Thin plumbing around the core use-cases: transactions, permission loading, error mapping. */
+const log = new Logger('realtime');
+const warn = (e: unknown): void =>
+  log.warn(`publish failed: ${e instanceof Error ? e.message : String(e)}`);
+
 export const createTicketService = (d: TicketServiceDeps) => {
   const brief = async (ticketId: string): Promise<TicketBrief | null> => {
     const rows = await d.db.$queryRaw<
@@ -97,14 +108,22 @@ export const createTicketService = (d: TicketServiceDeps) => {
     command: async <T>(fn: (c: Ctx) => Promise<Result<T, TicketError>>): Promise<T> => {
       const now = d.clock.now();
       let result: Result<T, TicketError>;
+      const ref: { tx: Tx | null } = { tx: null };
       try {
-        result = await inTx(d.db, (tx) => fn({ tx, now, cfg: d.cfg }));
+        result = await inTx(d.db, (tx) => {
+          ref.tx = tx;
+          return fn({ tx, now, cfg: d.cfg });
+        });
       } catch (e) {
         const code = dbBusinessError(e);
         if (code === null) throw e;
         throw appError(code, DB_CODES[code]);
       }
-      if (result.ok) return result.value;
+      if (result.ok) {
+        if (ref.tx !== null)
+          await flushCollector(d.db, collectorOf(ref.tx), d.publisher).catch(warn);
+        return result.value;
+      }
       const data = result.error.data;
       throw appError(
         result.error.code,
@@ -114,6 +133,13 @@ export const createTicketService = (d: TicketServiceDeps) => {
       );
     },
 
+    /** Publishes a plain "these tickets changed" notice (used by paths that change tickets outside a use-case). */
+    announceUpdated: async (ids: readonly string[]): Promise<void> => {
+      const c = newCollector();
+      for (const id of ids) c.updated.add(id);
+      await flushCollector(d.db, c, d.publisher).catch(warn);
+    },
+    publisher: d.publisher,
     db: d.db,
   };
 };

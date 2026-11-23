@@ -33,12 +33,15 @@ export const buildOpenApiDocument = (app: ApiApp) => {
 /** Builds the fully configured API (used by main.ts, the OpenAPI emitter and every test). */
 export const createApiApp = async (
   env: Env = appEnv,
-  options: { readonly logger?: boolean } = {},
+  options: { readonly logger?: boolean; readonly documentOnly?: boolean } = {},
 ): Promise<ApiApp> => {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule.register(env), {
-    bodyParser: false,
-    logger: options.logger === true ? ['error', 'warn', 'log'] : ['error', 'warn'],
-  });
+  const app = await NestFactory.create<NestExpressApplication>(
+    AppModule.register(env, { documentOnly: options.documentOnly === true }),
+    {
+      bodyParser: false,
+      logger: options.logger === true ? ['error', 'warn', 'log'] : ['error', 'warn'],
+    },
+  );
   app.setGlobalPrefix('api/v1');
   app.disable('x-powered-by');
   app.set(

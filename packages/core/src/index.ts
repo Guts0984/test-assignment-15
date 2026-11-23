@@ -50,3 +50,16 @@ export {
 } from './jobs/outbound';
 export { dueJobs, ensureDurableJobs, type DueJob } from './jobs/reconcile';
 export { systemActor } from './jobs/system-actor';
+export {
+  collectorOf,
+  flushCollector,
+  newCollector,
+  hasChanges,
+  loadMessageViews,
+  loadSummaries,
+  notifyPreviousOwner,
+  publishAfter,
+  type Collector,
+  type RealtimePublisher,
+} from './realtime/collector';
+export { createEmitterPublisher, createUserAccessRevoker } from './realtime/emitter-publisher';

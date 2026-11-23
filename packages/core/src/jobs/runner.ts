@@ -1,5 +1,6 @@
 import type { Db } from '../db/client';
-import { inTx } from '../db/client';
+import { inTx, type Tx } from '../db/client';
+import { collectorOf, flushCollector, type RealtimePublisher } from '../realtime/collector';
 import type { Ctx, TicketConfig } from '../tickets/types';
 
 export type JobRow = {
@@ -88,9 +89,12 @@ export const runTxJob = async (
   cfg: TicketConfig,
   handler: TxHandler,
   p: RetryPolicy,
+  publisher: RealtimePublisher | null = null,
 ): Promise<RunOutcome> => {
+  const txRef: { tx: Tx | null } = { tx: null };
   try {
-    return await inTx(db, async (tx) => {
+    const outcome = await inTx(db, async (tx) => {
+      txRef.tx = tx;
       const rows = await tx.$queryRaw<RawJob[]>`
         SELECT id, kind, ref, dedupe_key, run_at, attempts, max_attempts, payload FROM jobs
          WHERE id = ${BigInt(id)} AND status = 'pending' AND run_at <= ${now} FOR UPDATE SKIP LOCKED`;
@@ -104,6 +108,9 @@ export const runTxJob = async (
       await tx.$executeRaw`UPDATE jobs SET status = 'done', completed_at = ${now}, attempts = attempts + 1, last_error = NULL WHERE id = ${BigInt(id)}`;
       return 'done' as const;
     });
+    if (publisher !== null && txRef.tx !== null && outcome !== 'skipped')
+      await flushCollector(db, collectorOf(txRef.tx), publisher).catch(() => undefined);
+    return outcome;
   } catch (e) {
     return recordJobFailure(db, id, now, e, p);
   }

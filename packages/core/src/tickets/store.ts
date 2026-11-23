@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { appendTicketEvent } from '../events/ticket-events';
+import { collectorOf } from '../realtime/collector';
 import type { Tx } from '../db/client';
 import type { ActorRef, AttachmentInput, TicketRow } from './types';
 
@@ -106,6 +107,7 @@ export const insertMessage = async (
 ): Promise<{ id: string; seq: number }> => {
   const seq = await nextSeq(tx, m.ticketId);
   const id = randomUUID();
+  collectorOf(tx).messages.add(id);
   await tx.$executeRaw`
     INSERT INTO messages (id, ticket_id, seq, kind, direction, author_kind, author_user_id, author_name, body,
                           rfc_message_id, inbound_message_id, auto_kind, created_at, released_at, origin_ticket_id)
@@ -145,6 +147,7 @@ export const touch = async (
   now: Date,
   queued?: 'queue' | 'unqueue',
 ): Promise<void> => {
+  collectorOf(tx).updated.add(ticketId);
   await tx.$executeRaw`
     UPDATE tickets SET version = version + 1, updated_at = ${now},
            queued_at = CASE ${queued ?? 'keep'} WHEN 'queue' THEN ${now} WHEN 'unqueue' THEN NULL ELSE queued_at END

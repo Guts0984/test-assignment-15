@@ -9,6 +9,8 @@ import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ShiftsModule } from './modules/shifts/shifts.module';
 import { InboundModule } from './modules/inbound/inbound.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PortalModule } from './modules/portal/portal.module';
 import { PublicFormModule } from './modules/public-form/public-form.module';
 import { SurveysModule } from './modules/surveys/surveys.module';
@@ -24,7 +26,7 @@ import { TimeModule } from './modules/time/time.module';
   ],
 })
 export class AppModule {
-  static register(env: Env = appEnv): DynamicModule {
+  static register(env: Env = appEnv, o: { readonly documentOnly?: boolean } = {}): DynamicModule {
     return {
       module: AppModule,
       imports: [
@@ -37,6 +39,8 @@ export class AppModule {
         PublicFormModule,
         PortalModule,
         SurveysModule,
+        ...(o.documentOnly === true ? [] : [RealtimeModule]),
+        NotificationsModule,
         TimeModule,
         ...(env.TEST_CLOCK_ENABLED ? [TestControlModule] : []),
       ],

@@ -1,5 +1,6 @@
 import type { Tx } from '../db/client';
 import { appendTicketEvent } from '../events/ticket-events';
+import { collectorOf } from '../realtime/collector';
 
 export type SlaTarget = 'first_response' | 'resolution';
 
@@ -96,6 +97,7 @@ export const fireSlaEvent = async (
     return 'fired';
   }
   if (await pending(tx, t.id, a.target, 'warning')) await warn(tx, t, a.target, a.now);
+  collectorOf(tx).updated.add(t.id);
   const flag = isFirst ? 'first_response_breached' : 'resolution_breached';
   await tx.$executeRawUnsafe(
     `UPDATE tickets SET ${flag} = true, version = version + 1, updated_at = $1 WHERE id = $2::uuid`,

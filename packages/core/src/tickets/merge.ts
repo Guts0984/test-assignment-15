@@ -1,4 +1,5 @@
 import { ok, type Result } from '@helpdesk/shared';
+import { collectorOf, notifyPreviousOwner } from '../realtime/collector';
 import { cancelJob, requestTeamAssignment } from '../jobs/jobs';
 import { syncSla } from './sla-sync';
 import { history, lockTickets, touch } from './store';
@@ -68,6 +69,8 @@ export const mergeTickets = async (
     fromNumber: source.number,
     movedMessages: moved,
   });
+  collectorOf(c.tx).revokeCustomer.add(source.id);
+  notifyPreviousOwner(c.tx, source.id, source.assigneeId);
   await touch(c.tx, source.id, c.now);
   await touch(c.tx, target.id, c.now);
   if (source.assigneeId !== null) await requestTeamAssignment(c.tx, source.teamId, c.now);

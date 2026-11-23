@@ -1,6 +1,7 @@
 import {
   createDb,
   createDbClock,
+  createEmitterPublisher,
   type Db,
   type DbClock,
   type RetryPolicy,
@@ -68,6 +69,7 @@ export const startWorkerRuntime = async (c: RuntimeConfig): Promise<WorkerRuntim
     leaseMs: c.outboundLeaseMs,
     maxAttempts: c.jobMaxAttempts,
     defaultFrom: `support@${c.mailDomain}`,
+    publisher: createEmitterPublisher(redis),
   });
   const reconciler = createReconciler({
     db,

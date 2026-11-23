@@ -1,4 +1,5 @@
 import type { Tx } from '../db/client';
+import { collectorOf } from '../realtime/collector';
 import { appendTicketEvent } from './ticket-events';
 
 export type ReturnToQueueInput = {
@@ -34,6 +35,7 @@ export const returnAgentTicketsToQueue = async (
     UPDATE tickets SET assignee_id = NULL, queued_at = ${i.now}, version = version + 1, updated_at = ${i.now}
      WHERE id = ANY(${ids}::uuid[])`;
   for (const r of rows) {
+    collectorOf(tx).updated.add(r.id);
     await appendTicketEvent(tx, {
       ticketId: r.id,
       type: 'returned_to_queue',

@@ -1,10 +1,14 @@
 import {
+  collectorOf,
+  flushCollector,
   dbBusinessError,
   inTx,
   isUniqueViolation,
   requestTeamAssignments,
   returnAgentTicketsToQueue,
   type Db,
+  type RealtimePublisher,
+  type Tx,
 } from '@helpdesk/core';
 import {
   err,
@@ -19,7 +23,16 @@ import {
 } from '@helpdesk/shared';
 import { hashPassword, type PasswordCost } from '../../infra/password';
 
-export type AdminDeps = { readonly db: Db; readonly clock: Clock; readonly cost: PasswordCost };
+export type AdminDeps = {
+  readonly db: Db;
+  readonly clock: Clock;
+  readonly cost: PasswordCost;
+  readonly publisher: RealtimePublisher;
+  readonly revoker: {
+    leaveTeam: (userId: string, teamId: string) => void;
+    disconnectUser: (userId: string) => void;
+  };
+};
 export type AdminFailure = 'NOT_FOUND' | 'CONFLICT';
 
 const teamSelect = {
@@ -205,8 +218,10 @@ export const createAdmin = (d: AdminDeps) => ({
 
   /** Replaces profile and memberships; removing someone from a team (or deactivating) returns their tickets to the queue. */
   updateAgent: (id: string, i: AgentInput) =>
-    guard(() =>
-      inTx(d.db, async (tx) => {
+    guard(async () => {
+      const ref: { tx: Tx | null; removed: string[] } = { tx: null, removed: [] };
+      const view = await inTx(d.db, async (tx) => {
+        ref.tx = tx;
         const now = d.clock.now();
         const before = await tx.user.findUnique({
           where: { id },
@@ -215,6 +230,7 @@ export const createAdmin = (d: AdminDeps) => ({
         if (before === null) throw Object.assign(new Error('missing'), { code: 'P2025' });
         const keep = new Set(i.memberships.map((m) => m.teamId));
         const removed = before.memberships.map((m) => m.teamId).filter((t) => !keep.has(t));
+        ref.removed = removed;
         await tx.teamMember.deleteMany({ where: { userId: id } });
         await tx.user.update({
           where: { id },
@@ -256,8 +272,13 @@ export const createAdmin = (d: AdminDeps) => ({
         }
         await requestTeamAssignments(tx, [...new Set(affected)], now);
         return toAgentView(await tx.user.findUniqueOrThrow({ where: { id }, select: agentSelect }));
-      }),
-    ),
+      });
+      if (ref.tx !== null)
+        await flushCollector(d.db, collectorOf(ref.tx), d.publisher).catch(() => undefined);
+      if (!i.active) d.revoker.disconnectUser(id);
+      else for (const teamId of ref.removed) d.revoker.leaveTeam(id, teamId);
+      return view;
+    }),
 
   /** Lowering a limit below the current load is allowed: the agent simply gets nothing new until under it. */
   updateLimits: (

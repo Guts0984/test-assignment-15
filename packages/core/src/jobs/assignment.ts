@@ -1,6 +1,7 @@
 import { selectAgent, type AgentCandidate, type Language } from '@helpdesk/shared';
 import type { Tx } from '../db/client';
 import { appendTicketEvent } from '../events/ticket-events';
+import { collectorOf } from '../realtime/collector';
 
 type CandidateRow = {
   id: string;
@@ -58,6 +59,7 @@ export const assignQueuedTickets = async (
     if (pick === null) return { assigned, more: false };
     await tx.$executeRaw`UPDATE tickets SET assignee_id = ${pick}::uuid, queued_at = NULL, version = version + 1, updated_at = ${now} WHERE id = ${t.id}::uuid`;
     await tx.$executeRaw`UPDATE users SET last_assigned_at = ${now} WHERE id = ${pick}::uuid`;
+    collectorOf(tx).updated.add(t.id);
     await appendTicketEvent(tx, {
       ticketId: t.id,
       type: 'assigned',

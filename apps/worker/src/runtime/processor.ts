@@ -7,6 +7,7 @@ import {
   type RunOutcome,
   type SendFn,
   type TicketConfig,
+  type RealtimePublisher,
 } from '@helpdesk/core';
 import type { Clock } from '@helpdesk/shared';
 
@@ -19,6 +20,7 @@ export type ProcessorDeps = {
   readonly leaseMs: number;
   readonly maxAttempts: number;
   readonly defaultFrom: string;
+  readonly publisher: RealtimePublisher | null;
 };
 
 /** What a BullMQ message does: look the durable job up and run it. Everything that matters happens in Postgres. */
@@ -40,10 +42,11 @@ export const createProcessor =
         maxAttempts: d.maxAttempts,
         defaultFrom: d.defaultFrom,
         send: d.send,
+        publisher: d.publisher,
         policy: d.policy,
       });
     }
     const handler = txHandlers[kind];
     if (handler === undefined) return 'skipped';
-    return runTxJob(d.db, jobId, now, d.cfg, handler, d.policy);
+    return runTxJob(d.db, jobId, now, d.cfg, handler, d.policy, d.publisher);
   };

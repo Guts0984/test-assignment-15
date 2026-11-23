@@ -263,3 +263,16 @@ export const surveyView = z.object({
 });
 
 export const inboundAccepted = z.object({ status: z.enum(['queued', 'duplicate']) });
+
+export const notificationView = z.object({
+  id: z.string().uuid(),
+  kind: z.string(),
+  ticketId: z.string().uuid().nullable(),
+  data: z.record(z.unknown()),
+  createdAt: dt,
+  read: z.boolean(),
+});
+export const notificationList = z.object({
+  items: z.array(notificationView),
+  unread: z.number().int(),
+});

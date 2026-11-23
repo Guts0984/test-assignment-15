@@ -8,3 +8,6 @@ export const ADMIN = Symbol('ADMIN');
 export const SHIFTS = Symbol('SHIFTS');
 export const TICKETS = Symbol('TICKETS');
 export const TICKET_CFG = Symbol('TICKET_CFG');
+export const REDIS = Symbol('REDIS');
+export const PUBLISHER = Symbol('PUBLISHER');
+export const ACCESS_REVOKER = Symbol('ACCESS_REVOKER');

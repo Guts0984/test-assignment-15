@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
-import type { Db, TicketConfig } from '@helpdesk/core';
+import type { Db, RealtimePublisher, TicketConfig } from '@helpdesk/core';
 import type { Clock } from '@helpdesk/shared';
-import { CLOCK, DB, ENV, TICKETS, TICKET_CFG } from '../../infra/tokens';
+import { CLOCK, DB, ENV, PUBLISHER, TICKETS, TICKET_CFG } from '../../infra/tokens';
 import { TicketsController } from './tickets.controller';
 import { createTicketService } from './tickets.service';
 
@@ -36,9 +36,9 @@ type TicketEnv = {
     },
     {
       provide: TICKETS,
-      inject: [DB, CLOCK, TICKET_CFG],
-      useFactory: (db: Db, clock: Clock, cfg: TicketConfig) =>
-        createTicketService({ db, clock, cfg }),
+      inject: [DB, CLOCK, TICKET_CFG, PUBLISHER],
+      useFactory: (db: Db, clock: Clock, cfg: TicketConfig, publisher: RealtimePublisher) =>
+        createTicketService({ db, clock, cfg, publisher }),
     },
   ],
   exports: [TICKETS, TICKET_CFG],

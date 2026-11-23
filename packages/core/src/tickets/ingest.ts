@@ -7,7 +7,8 @@ import {
   type RoutingRule,
 } from '@helpdesk/shared';
 import type { Db } from '../db/client';
-import { inTx } from '../db/client';
+import { inTx, type Tx } from '../db/client';
+import { collectorOf, flushCollector, type RealtimePublisher } from '../realtime/collector';
 import { appendCustomerMessage } from './customer-message';
 import { createTicket } from './create-ticket';
 import { parseRawMail, type ParsedMail } from './mail-parse';
@@ -246,4 +247,14 @@ export const processInbound = async (
   inboundId: string,
   now: Date,
   cfg: TicketConfig,
-): Promise<IngestOutcome> => inTx(db, (tx) => processInboundTx({ tx, now, cfg }, inboundId));
+  publisher: RealtimePublisher | null = null,
+): Promise<IngestOutcome> => {
+  const ref: { tx: Tx | null } = { tx: null };
+  const outcome = await inTx(db, (tx) => {
+    ref.tx = tx;
+    return processInboundTx({ tx, now, cfg }, inboundId);
+  });
+  if (publisher !== null && ref.tx !== null)
+    await flushCollector(db, collectorOf(ref.tx), publisher).catch(() => undefined);
+  return outcome;
+};

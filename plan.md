@@ -355,6 +355,12 @@ Every item below is copied into the README "Decisions" section (checked by `ACC:
 - **A-87 Assignment** takes tickets of a team most urgent first under a per-team advisory lock and a row lock with `SKIP LOCKED`, picks with the shared `selectAgent`, and relies on the agent-load trigger as the final guard. Resolving/closing/transferring/removing requests a new run, so freed slots are filled within about a second.
 - **A-88 Notifications.** SLA warnings create `notifications` rows for the assignee (team leads when unassigned); breaches create escalations for every active lead of the team. (Read API and realtime push arrive with the realtime block.)
 
+- **A-89 Realtime mechanics (B9).** Every use-case records what it changed in a per-transaction collector (`created`, `updated`, `messages`, previous owners, access revocations). After the commit the api (and the worker) turn it into domain events by reading the committed state and publish them through `@socket.io/redis-emitter`; each api copy delivers to its own sockets through the Redis adapter, so a worker or either api copy reaches clients on both. A failed publish never undoes the work (clients refetch on reconnect). Events carry the ticket `version`; clients drop events not newer than what they hold.
+- **A-90 Socket authentication and rooms.** WebSocket-only, handshake `auth: { token }` (staff JWT, same checks as HTTP, user re-read from the database) or `auth: { ticketToken }` (magic link). Staff join `user:<id>` and `team:<id>` for their teams (`admin` for admins); customers join only `ticket:<id>:customer`. `ticket:subscribe {ticketId, lastSeq}` re-reads permissions from the database, joins `ticket:<id>:staff`, answers with the ticket summary, the messages missed since `lastSeq` (notes included for staff) and the current viewers. Foreign ids get the same `NOT_FOUND` as missing ones. A team change drops everybody from the ticket's staff room (`ticket:access-changed`), a merge disconnects the duplicate's customer sockets, removal from a team / deactivation removes the user's sockets from the room / disconnects them.
+- **A-91 Presence.** Redis hash per ticket (`hd:presence:<id>`, one entry per socket) with the injected clock's heartbeat time; entries older than `PRESENCE_TTL_SECONDS` (30) no longer count, are deleted by a reaper that runs in every api copy (about every TTL/6), and the room is notified (`presence:changed`). Closing a tab removes the entry immediately; an abrupt drop disappears by Socket.IO ping timeout (about 20 s) or the TTL. `typing` expires 5 s after the last keystroke event. Clients re-send `presence:update` every `PRESENCE_HEARTBEAT_SECONDS` (10).
+- **A-92 Event budget.** `SOCKET_EVENT_BUDGET_PER_SECOND` (20) client events per second per connection; the excess is answered with `EVENT_BUDGET_EXCEEDED` and ignored. It is per socket, never per IP, and does not touch server-to-client delivery.
+- **A-93 Notifications API.** `GET /notifications` (own SLA warnings / breach escalations) and `POST /notifications/read`.
+
 ---
 
 ## 4. Architecture
@@ -688,7 +694,7 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 - [x] B6 ticket domain in api
 - [x] B7 mail stub
 - [x] B8 worker + reconciler
-- [ ] B9 realtime
+- [x] B9 realtime
 - [ ] B10 web
 - [ ] B11 nginx + full compose + adversarial + e2e + acceptance + perf
 - [ ] B12 README + docs
@@ -708,7 +714,8 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 | B5 | 5243132 | ok | ok | ok | ok (regenerated = staged) | ok (api 89 + 4 serial, core 28, shared 149) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 | B6 | db4b7d1 | ok | ok | ok | ok | ok (shared 156, core 79, api 135+4 serial) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 | B7 | df27349 | ok | ok | ok | ok | ok (mail-stub 18) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
-| B8 | (see git log) | ok | ok | ok | ok | ok (core 96, worker 7+2) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
+| B8 | 1008001 | ok | ok | ok | ok | ok (core 96, worker 7+2) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
+| B9 | (see git log) | ok | ok | ok | ok | ok (api 148+4 serial, core 103, worker 7+2) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 
 ## 11. Acceptance and performance results
 

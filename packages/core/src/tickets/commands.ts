@@ -6,6 +6,7 @@ import {
   type Result,
   type TicketStatus,
 } from '@helpdesk/shared';
+import { collectorOf, notifyPreviousOwner } from '../realtime/collector';
 import { cancelJob, requestTeamAssignment, upsertJob } from '../jobs/jobs';
 import { closeResolvedTicket } from './close';
 import { syncSla } from './sla-sync';
@@ -103,6 +104,8 @@ export const changeTeam = async (
     to: i.teamId,
     previousAssigneeId: t.assigneeId,
   });
+  collectorOf(c.tx).revokeStaff.add(t.id);
+  notifyPreviousOwner(c.tx, t.id, t.assigneeId);
   await syncSla(c.tx, t.id, c.now, c.cfg.warningRatio);
   await touch(c.tx, t.id, c.now);
   await requestTeamAssignment(c.tx, i.teamId, c.now);
@@ -139,6 +142,8 @@ export const transferTicket = async (
   await c.tx
     .$executeRaw`UPDATE users SET last_assigned_at = ${c.now} WHERE id = ${i.toUserId}::uuid`;
   await history(c.tx, t.id, 'transferred', i.actor, c.now, { from: t.assigneeId, to: i.toUserId });
+  notifyPreviousOwner(c.tx, t.id, t.assigneeId);
+  notifyPreviousOwner(c.tx, t.id, t.assigneeId);
   await touch(c.tx, t.id, c.now);
   if (t.assigneeId !== null) await requestTeamAssignment(c.tx, t.teamId, c.now);
   return ok({ from: t.assigneeId, to: i.toUserId });
