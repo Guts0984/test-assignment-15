@@ -1,0 +1,37 @@
+# Full stack is completed in the compose block; this skeleton has the stateful services.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command: ['postgres', '-c', 'config_file=/etc/postgresql/postgresql.conf']
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/db/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    ports:
+      - '127.0.0.1:${POSTGRES_HOST_PORT:-5433}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '/usr/local/etc/redis/redis.conf']
+    volumes:
+      - ./infra/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    ports:
+      - '127.0.0.1:${REDIS_HOST_PORT:-6380}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:

@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "preserve",
+    "allowJs": false,
+    "incremental": true,
+    "declaration": false,
+    "experimentalDecorators": false,
+    "emitDecoratorMetadata": false,
+    "plugins": [{ "name": "next" }],
+    "paths": { "@/*": ["./src/*"] },
+    "types": ["node"]
+  },
+  "include": ["next-env.d.ts", "app", "src", "e2e", "vitest.config.ts", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

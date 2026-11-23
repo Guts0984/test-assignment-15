@@ -1,0 +1,8 @@
+node_modules
+dist
+.next
+pnpm-lock.yaml
+ASSIGNMENT.md
+apps/api/openapi.json
+apps/web/src/shared/api/generated
+CLAUDE.md

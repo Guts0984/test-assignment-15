@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+# One run per commit: the group is the commit, and a newer push never cancels the run of an earlier commit.
+concurrency:
+  group: ci-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: helpdesk
+          POSTGRES_PASSWORD: dev-only-postgres-password
+          POSTGRES_DB: helpdesk
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U helpdesk" --health-interval 3s --health-timeout 3s --health-retries 30
+      redis:
+        image: redis:7-alpine
+        ports: ['6380:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 3s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Prepare env
+        run: cp .env.example .env
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: Build shared packages
+        run: pnpm --filter @helpdesk/shared build
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Lint (includes FSD boundaries and the no-Cyrillic check)
+        run: pnpm lint
+      - name: Generated OpenAPI client must match the schema
+        run: if [ -f scripts/openapi-diff.sh ]; then bash scripts/openapi-diff.sh; fi
+      - name: Tests (unit and integration)
+        run: pnpm test
+      - name: Build
+        run: pnpm build
