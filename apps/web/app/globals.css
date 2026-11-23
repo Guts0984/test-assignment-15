@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-brand: #2459d3;
+  --color-brand-dark: #1a43a3;
+  --color-note: #b45309;
+}
+
+:root {
+  --bg: #f6f7f9;
+  --fg: #1c2330;
+  --card: #ffffff;
+  --line: #d9dde4;
+  --muted: #5b6577;
+  --reply-bg: #eaf1ff;
+  --reply-line: #2459d3;
+  --note-bg: #fff6e0;
+  --note-line: #b45309;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11151c;
+    --fg: #e6e9ef;
+    --card: #1a2029;
+    --line: #2d3644;
+    --muted: #98a2b3;
+    --reply-bg: #172544;
+    --reply-line: #6f9bff;
+    --note-bg: #3a2b0c;
+    --note-line: #f0b04a;
+  }
+}
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+:focus-visible {
+  outline: 2px solid var(--reply-line);
+  outline-offset: 2px;
+}

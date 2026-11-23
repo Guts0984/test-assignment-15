@@ -708,6 +708,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/directory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Teams and the agents of my teams, for pickers */
+        get: operations["DirectoryController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/time": {
         parameters: {
             query?: never;
@@ -1410,6 +1427,24 @@ export interface components {
         };
         NotificationsOkDto: {
             ok: boolean;
+        };
+        DirectoryDto: {
+            teams: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                timeZone: string;
+            }[];
+            agents: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                /** Format: uuid */
+                teamId: string;
+                onShift: boolean;
+                /** @enum {string} */
+                role: "agent" | "lead";
+            }[];
         };
         TimeDto: {
             /** Format: date-time */
@@ -5633,6 +5668,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationsOkDto"];
+                };
+            };
+            /** @description Error in the shared format */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Error in the shared format */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Error in the shared format */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Error in the shared format */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Error in the shared format */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Error in the shared format */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Error in the shared format */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    DirectoryController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectoryDto"];
                 };
             };
             /** @description Error in the shared format */

@@ -1,5 +1,5 @@
-import { HomePage } from '@/pages/home';
+import { QueuePage } from '@/pages/queue';
 
 export default function Page() {
-  return <HomePage />;
+  return <QueuePage />;
 }

@@ -361,6 +361,14 @@ Every item below is copied into the README "Decisions" section (checked by `ACC:
 - **A-92 Event budget.** `SOCKET_EVENT_BUDGET_PER_SECOND` (20) client events per second per connection; the excess is answered with `EVENT_BUDGET_EXCEEDED` and ignored. It is per socket, never per IP, and does not touch server-to-client delivery.
 - **A-93 Notifications API.** `GET /notifications` (own SLA warnings / breach escalations) and `POST /notifications/read`.
 
+- **A-94 Web architecture (B10).** Feature-Sliced Design under `apps/web/src` with the Next route files in `apps/web/app` as thin wrappers. `TicketList` lives in `entities/ticket` (several widgets use it, and widgets may not import each other). The access token is kept in memory only; the HttpOnly refresh cookie restores it on load and one shared refresh call serves concurrent 401s. All pages are client components rendered on demand (`dynamic = 'force-dynamic'`).
+- **A-95 Live UI.** After login one WebSocket opens; every `ticket.created/updated/message.created` event whose version is newer than the last seen one invalidates the queue, team queue, dashboard, notification and open-ticket queries (refetch about 50 ms); a reconnect invalidates everything (catch-up). The ticket view re-subscribes after every reconnect and heartbeats presence every 10 s.
+- **A-96 Server-clock countdown.** `X-Server-Time` on every API response (and `time:sync` on the socket) feeds one shared skew; every countdown is `dueAt - (Date.now() + skew)`, so a browser clock that is hours off still shows the server's time left.
+- **A-97 Editor.** Drafts are stored per ticket and kind in `localStorage` (reply and note separately) and restored after a reload; the reply tab is a solid blue panel labelled "Public reply", the note tab a dashed amber panel with a lock and "visible to staff only"; a sent reply shows a 10-second undo bar (Undo button receives focus; the countdown follows the server clock); a 409 `TICKET_HAS_NEW_MESSAGES` shows the new messages with "Send anyway". Ctrl+Enter sends.
+- **A-98 Keyboard.** Queue lists are one tab stop with Arrow/j/k/Home/End movement, Enter to open and `t` to take (team queue); controls are native elements with labels.
+- **A-99 Report filters** (`from`, `to`, `team`, `agent`, `priority`) and the search text (`q`) are URL search params; changing them pushes a history entry, so reload and Back restore the exact view. `GET /api/v1/directory` supplies team and colleague names for pickers.
+- **A-100 Customer pages** (`/portal#token=...`, `/survey#token=...`, `/new-request`) read the token from the URL fragment (never sent to a server log), keep it in `sessionStorage` for reloads, and use the `X-Ticket-Token` / `X-Survey-Token` headers.
+
 ---
 
 ## 4. Architecture
@@ -695,7 +703,7 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 - [x] B7 mail stub
 - [x] B8 worker + reconciler
 - [x] B9 realtime
-- [ ] B10 web
+- [x] B10 web
 - [ ] B11 nginx + full compose + adversarial + e2e + acceptance + perf
 - [ ] B12 README + docs
 - [ ] All 17 acceptance checks run and recorded (§11)
@@ -715,7 +723,8 @@ Bugs found during any block are fixed in that block, keep their test, and get a 
 | B6 | db4b7d1 | ok | ok | ok | ok | ok (shared 156, core 79, api 135+4 serial) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 | B7 | df27349 | ok | ok | ok | ok | ok (mail-stub 18) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
 | B8 | 1008001 | ok | ok | ok | ok | ok (core 96, worker 7+2) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
-| B9 | (see git log) | ok | ok | ok | ok | ok (api 148+4 serial, core 103, worker 7+2) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
+| B9 | 492399e | ok | ok | ok | ok | ok (api 148+4 serial, core 103, worker 7+2) | ok | ok | n/a | `scripts/ci-local.sh` ALL GREEN |
+| B10 | (see git log) | ok | ok | ok (incl. FSD) | ok | ok (web 43 model/lib + FSD lint) | ok | ok (next build) | n/a | `scripts/ci-local.sh` ALL GREEN |
 
 ## 11. Acceptance and performance results
 

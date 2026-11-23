@@ -5293,6 +5293,99 @@
         "x-access": "staff"
       }
     },
+    "/api/v1/directory": {
+      "get": {
+        "operationId": "DirectoryController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in the shared format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Teams and the agents of my teams, for pickers",
+        "tags": [
+          "directory"
+        ],
+        "x-access": "staff"
+      }
+    },
     "/api/v1/time": {
       "get": {
         "operationId": "TimeController_time",
@@ -8094,6 +8187,74 @@
         },
         "required": [
           "ok"
+        ]
+      },
+      "DirectoryDto": {
+        "type": "object",
+        "properties": {
+          "teams": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "timeZone": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "timeZone"
+              ]
+            }
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "teamId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "onShift": {
+                  "type": "boolean"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "agent",
+                    "lead"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "teamId",
+                "onShift",
+                "role"
+              ]
+            }
+          }
+        },
+        "required": [
+          "teams",
+          "agents"
         ]
       },
       "TimeDto": {

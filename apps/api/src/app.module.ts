@@ -8,6 +8,7 @@ import { InfraModule } from './infra/infra.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ShiftsModule } from './modules/shifts/shifts.module';
+import { DirectoryModule } from './modules/directory/directory.module';
 import { InboundModule } from './modules/inbound/inbound.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -41,6 +42,7 @@ export class AppModule {
         SurveysModule,
         ...(o.documentOnly === true ? [] : [RealtimeModule]),
         NotificationsModule,
+        DirectoryModule,
         TimeModule,
         ...(env.TEST_CLOCK_ENABLED ? [TestControlModule] : []),
       ],

@@ -1,0 +1,23 @@
+import type { components } from './generated/schema';
+
+type S = components['schemas'];
+export type TicketListItem = S['TicketListDto']['items'][number];
+export type TicketList = S['TicketListDto'];
+export type TicketDetail = S['TicketDetailDto'];
+export type StaffMessage = S['TicketDetailDto']['messages'][number];
+export type TicketEvent = S['TicketDetailDto']['events'][number];
+export type UserView = S['UserViewDto'];
+export type TeamView = S['TeamViewDto'];
+export type AgentView = S['AgentViewDto'];
+export type Dashboard = S['DashboardDto'];
+export type Report = S['ReportDto'];
+export type SearchResults = S['SearchResultsDto'];
+export type PortalTicket = S['PortalTicketDto'];
+export type SurveyView = S['SurveyViewDto'];
+export type NotificationList = S['NotificationListDto'];
+export type RoutingRule = S['RoutingRuleViewDto'];
+export type Mailbox = S['MailboxViewDto'];
+export type FailedJob = S['FailedJobViewDto'];
+export type Holiday = S['HolidayViewDto'];
+export type ErrorResponse = S['ErrorResponseDto'];
+export type Directory = S['DirectoryDto'];
