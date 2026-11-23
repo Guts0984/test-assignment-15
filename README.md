@@ -32,6 +32,18 @@ Migrations and the seed run by themselves. The default profile uses the **full s
 
 Demo logins (password is `SEED_STAFF_PASSWORD` from `.env.example`, `Passw0rd-demo!`): `admin@helpdesk.test`, `lead.support-kyiv@helpdesk.test` (also `lead.billing-kyiv`, `lead.support-warsaw`, `lead.tech-warsaw`), and `agent01@helpdesk.test` … `agent80@helpdesk.test`. A smaller seed for quick starts: set `SEED_PROFILE=small` in `.env`.
 
+### Customers (the people who make requests)
+
+Customers have no account and no password. There are three ways in, and all of them can be tried locally:
+
+| Way | How to try it | What happens |
+| --- | --- | --- |
+| Email | Open the mail stub (http://localhost:8025), use "Send inbound email": pick a support address (`support@`, `billing@`, `tech@`, `pl@` at `helpdesk.test`), any sender, a subject and text, optional attachments | A ticket is created (or the mail joins its thread, see section 4), routed to a team and assigned to a free agent. The customer receives an acknowledgement with a ticket number and a personal link |
+| Web form | http://localhost:8080/new-request: subject, text, email, attachments up to 10 MB (larger gets `413`) | Same as an email. The page shows only the ticket number; the link goes to the email address, so typing someone else's address gives nobody access |
+| Link from an email | Open the mail stub, take the link from any email sent to the customer (`/portal#token=...`) | The customer sees the whole conversation (never internal notes, never replies that are still inside the 10 s undo window or were cancelled), can reply with attachments, and sees the status. A reply on a closed ticket opens a new linked ticket |
+
+The link is a random token stored hashed, valid for one ticket, expiring after 30 days, and revoked when the ticket is merged. After a ticket is closed the customer gets a survey link (`/survey#token=...`): a rating from 1 to 5 and a comment, changeable for 7 days, one survey per ticket. The rating appears in the lead's report. Customers also receive the agents' replies by email; replying to that email continues the same ticket.
+
 Configuration: every variable is listed with a comment in `.env.example`; each app validates its environment with zod in `src/config/env.ts` and exits with a readable message on error.
 
 ### Tests
