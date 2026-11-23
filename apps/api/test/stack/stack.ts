@@ -71,6 +71,20 @@ export const setClock = async (body: { advanceMs?: number; offsetMs?: number }):
     headers: { 'x-test-control-token': secrets.controlToken },
   });
   if (r.status !== 200) throw new Error(`clock failed ${r.status} ${r.text}`);
+  // Every api copy and worker learns the new offset through LISTEN/polling, not at the same instant. Until they agree,
+  // a token issued by one copy can look "not valid yet" to the other, so wait until consecutive answers (nginx
+  // alternates between the copies) are within two seconds of each other.
+  const end = Date.now() + 15_000;
+  for (;;) {
+    const times: number[] = [];
+    for (let i = 0; i < 8; i += 1) {
+      const t = await client({ baseUrl: urls.base }).get('/api/v1/time');
+      times.push(Date.parse((t.json as { now: string }).now));
+    }
+    if (Math.max(...times) - Math.min(...times) < 2000) return;
+    if (Date.now() > end) throw new Error('the api copies did not agree on the clock');
+    await new Promise((res) => setTimeout(res, 200));
+  }
 };
 
 export type TestTeam = {
