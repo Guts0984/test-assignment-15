@@ -1,7 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import { burst } from './helpers/concurrency';
-import { createTeam, createTicket, testDb, uniq } from './helpers/db';
+import {
+  createAgent,
+  createCustomer,
+  createTeam,
+  createTicket,
+  openCountOf,
+  testDb,
+  uniq,
+} from './helpers/db';
 import {
   CFG,
   T0,
@@ -159,7 +167,7 @@ describe('new inbound mail', () => {
     );
   });
 
-  it('rejects a mail whose attachments exceed 10 MB', async () => {
+  it('keeps the message of a mail whose attachments exceed 10 MB, drops the files and says so in the text (review F10)', async () => {
     const { box, from } = await setup();
     const r = await deliver(db, box, {
       from,
@@ -168,7 +176,15 @@ describe('new inbound mail', () => {
       text: 'x',
       attachment: { name: 'big.bin', content: Buffer.alloc(10 * 1024 * 1024 + 10, 1) },
     });
-    expect(r.outcome).toMatchObject({ kind: 'rejected', reason: 'PAYLOAD_TOO_LARGE' });
+    expect(r.outcome).toMatchObject({ kind: 'created' });
+    const ticketId = (r.outcome as { ticketId: string }).ticketId;
+    const m = await db.message.findFirstOrThrow({
+      where: { ticketId },
+      include: { attachments: true },
+    });
+    expect(m.attachments).toHaveLength(0);
+    expect(m.body).toContain('big.bin');
+    expect(m.body).toContain('were not stored');
   });
 
   it('stores hostile subjects and bodies as inert text', async () => {
@@ -358,6 +374,40 @@ describe('threading (requirement 2 of the customer scenarios)', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('a customer reply to a resolved ticket whose agent is full is stored and the ticket returns to the team queue (review F1)', async () => {
+    const s = await start();
+    const t0 = await ticketOf(db, s.ticketId);
+    const agent = await createAgent(db, t0.teamId, { limit: 1 });
+    await db.ticket.update({
+      where: { id: s.ticketId },
+      data: { status: 'resolved', resolvedAt: T0, assigneeId: agent.id },
+    });
+    const customer = await createCustomer(db);
+    await createTicket(db, {
+      teamId: t0.teamId,
+      customerId: customer.id,
+      assigneeId: agent.id,
+      status: 'open',
+    });
+    expect(await openCountOf(db, agent.id)).toBe(1);
+    const r = await deliver(
+      db,
+      s.box,
+      { from: s.from, to: s.box, subject: `Re: [#${s.number}]`, text: 'it broke again' },
+      at(T0, 3600_000),
+    );
+    expect(r.outcome).toMatchObject({ kind: 'appended', reopened: true });
+    const t = await ticketOf(db, s.ticketId);
+    expect([t.status, t.assigneeId]).toEqual(['open', null]);
+    expect(
+      await db.message.count({
+        where: { ticketId: s.ticketId, body: { contains: 'it broke again' } },
+      }),
+    ).toBe(1);
+    expect(await openCountOf(db, agent.id)).toBe(1);
+    expect((await eventsOf(db, s.ticketId)).map((e) => e.type)).toContain('returned_to_queue');
+  });
+
   it('a customer reply to a resolved ticket reopens it and cancels the auto-close', async () => {
     const s = await start();
     await db.ticket.update({
@@ -507,11 +557,34 @@ describe('autoreplies and bounces (requirement: never open or create tickets)', 
       inReplyTo: s.ack.rfcMessageId,
       headers: { 'Content-Type': 'multipart/report; report-type=delivery-status; boundary=x' },
     });
-    // the sender is mailer-daemon, not the ticket customer, so it must not attach (anti-forgery) and must not create a ticket
-    expect(r.outcome).toEqual({ kind: 'ignored_automated' });
+    // A mail server's bounce is matched by the Message-ID it refers to (review F14): the email is marked bounced and
+    // the report is kept as an internal note, but no ticket is created and nothing is reopened.
+    expect(r.outcome).toMatchObject({ kind: 'automated_attached' });
+    expect((await db.outboundEmail.findUniqueOrThrow({ where: { id: s.ack.id } })).state).toBe(
+      'bounced',
+    );
     expect(
       await db.ticket.count({ where: { customer: { email: { contains: 'mailer-daemon' } } } }),
     ).toBe(0);
+  });
+
+  it('a bounce of an agent reply (whose Message-ID is both a thread message and an outbound email) marks the email bounced (review F14)', async () => {
+    const s = await start();
+    await db.outboundEmail.update({ where: { id: s.ack.id }, data: { state: 'sent', sentAt: T0 } });
+    await db.$executeRaw`INSERT INTO messages (id, ticket_id, seq, kind, direction, author_kind, body, rfc_message_id, created_at)
+      VALUES (gen_random_uuid(), ${s.ticketId}::uuid, 50, 'public', 'outbound', 'agent', 'reply', ${s.ack.rfcMessageId}, now())`;
+    const r = await deliver(db, s.box, {
+      from: 'MAILER-DAEMON@mx.test',
+      to: s.box,
+      subject: 'Undelivered Mail Returned to Sender',
+      text: 'user unknown',
+      inReplyTo: s.ack.rfcMessageId,
+      headers: { 'Content-Type': 'multipart/report; report-type=delivery-status; boundary=x' },
+    });
+    expect(r.outcome).toMatchObject({ kind: 'automated_attached' });
+    expect((await db.outboundEmail.findUniqueOrThrow({ where: { id: s.ack.id } })).state).toBe(
+      'bounced',
+    );
   });
 
   it('a bounce reported by the customer mail system for the customer address is attached and marks the email bounced', async () => {

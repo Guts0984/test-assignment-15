@@ -156,7 +156,7 @@ export class TicketsController {
         authorName: a.user.name,
         body: body.body,
         lastSeenSeq: body.lastSeenSeq,
-        confirmNewMessages: body.confirmNewMessages,
+        confirmedSeq: body.confirmedSeq ?? null,
       }),
     );
     return {

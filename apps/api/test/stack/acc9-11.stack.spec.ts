@@ -41,7 +41,7 @@ describe('ACC-10: undo send', () => {
     await new Promise((r) => setTimeout(r, 5000));
     expect((await stubMail({ to: from })).filter((m) => m.text.includes('CANCELLED-REPLY'))).toHaveLength(0);
 
-    const kept = (await agent?.client.post(`/api/v1/tickets/${t.id}/replies`, { body: 'DELIVERED-REPLY', lastSeenSeq: 1, confirmNewMessages: true }))?.json as { messageId: string };
+    const kept = (await agent?.client.post(`/api/v1/tickets/${t.id}/replies`, { body: 'DELIVERED-REPLY', lastSeenSeq: 1 }))?.json as { messageId: string };
     await setClock({ advanceMs: 10_500 });
     const late = await agent?.client.del(`/api/v1/tickets/${t.id}/replies/${kept.messageId}`);
     expect(late?.status).toBe(409);

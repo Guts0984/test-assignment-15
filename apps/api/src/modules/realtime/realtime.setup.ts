@@ -7,7 +7,7 @@ import type { Server, Socket } from 'socket.io';
 import { z } from 'zod';
 import { createBudget } from './budget';
 import { createPresence, type Presence } from './presence';
-import { authenticateSocket, type SocketIdentity } from './socket-auth';
+import { authenticateSocket, refreshStaffIdentity, type SocketIdentity } from './socket-auth';
 
 export type RealtimeDeps = {
   readonly db: Db;
@@ -97,18 +97,17 @@ export const setupRealtime = (
     /** Staff only; permission is re-read from the database on every subscription. */
     const staffAccess = async (ticketId: string): Promise<boolean> => {
       if (who.kind !== 'staff') return false;
-      const fresh = await authenticateSocket(
-        { db: d.db, clock: d.clock, jwtSecret: d.jwtSecret },
-        { token: socket.handshake.auth['token'] },
-      );
-      if (!fresh.ok || fresh.value.kind !== 'staff') return false;
+      // The handshake token may have expired long ago (15 min); what counts is that the account is still active
+      // and the token version it was issued with is still current (logout and password changes bump it).
+      const fresh = await refreshStaffIdentity(d.db, who.userId, who.version);
+      if (fresh === null) return false;
       const rows = await d.db.$queryRaw<
         { team_id: string; customer_id: string }[]
       >`SELECT team_id, customer_id FROM tickets WHERE id = ${ticketId}::uuid`;
       const t = rows[0];
       return (
         t !== undefined &&
-        canViewTicket(fresh.value.principal, {
+        canViewTicket(fresh.principal, {
           ticketId,
           teamId: t.team_id,
           customerId: t.customer_id,

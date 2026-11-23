@@ -54,6 +54,15 @@ describe('parseMessageIds', () => {
 
 describe('detectAutomated', () => {
   const none = {};
+  it('does not mistake human mail that carries X-Auto-Response-Suppress for an automatic reply', () => {
+    for (const value of ['All', 'DR, RN, NRN, OOF, AutoReply'])
+      expect(
+        detectAutomated(
+          { 'X-Auto-Response-Suppress': value, Subject: 'Re: my invoice' },
+          { from: 'Ann <ann@x.test>' },
+        ),
+      ).toBeNull();
+  });
   it('lets ordinary human mail through', () => {
     expect(
       detectAutomated(
@@ -70,6 +79,10 @@ describe('detectAutomated', () => {
     [{ Precedence: 'auto_reply' }, 'autoreply'],
     [{ 'X-Autoreply': 'yes' }, 'autoreply'],
     [{ 'X-Autorespond': 'yes' }, 'autoreply'],
+    [
+      { Subject: 'Automatic reply: Re: Login problem', 'X-Auto-Response-Suppress': 'DR' },
+      'autoreply',
+    ],
     [{ 'Content-Type': 'multipart/report; report-type=delivery-status; boundary=x' }, 'bounce'],
     [{ 'Return-Path': '<>' }, 'bounce'],
   ])('%j is %s', (headers, kind) => {

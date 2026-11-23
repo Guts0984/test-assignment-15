@@ -38,13 +38,15 @@ export const addBucket = (into: Bucket, b: Bucket): void => {
 
 const round = (n: number, d: number): number => Math.round(n * 10 ** d) / 10 ** d;
 
+const roundOrNull = (n: number | null): number | null => (n === null ? null : round(n, 1));
+
 /** Turns collected values into the numbers shown in the report. */
 export const toStats = (b: Bucket) => ({
   tickets: b.tickets,
-  firstResponseMedianMinutes: percentileCont(b.fr, 0.5),
-  firstResponseP90Minutes: percentileCont(b.fr, 0.9),
-  resolutionMedianMinutes: percentileCont(b.res, 0.5),
-  resolutionP90Minutes: percentileCont(b.res, 0.9),
+  firstResponseMedianMinutes: roundOrNull(percentileCont(b.fr, 0.5)),
+  firstResponseP90Minutes: roundOrNull(percentileCont(b.fr, 0.9)),
+  resolutionMedianMinutes: roundOrNull(percentileCont(b.res, 0.5)),
+  resolutionP90Minutes: roundOrNull(percentileCont(b.res, 0.9)),
   withinSlaPercent: b.decided === 0 ? null : round((b.within / b.decided) * 100, 1),
   breaches: b.breaches,
   ratingAverage: b.ratingCount === 0 ? null : round(b.ratingSum / b.ratingCount, 2),

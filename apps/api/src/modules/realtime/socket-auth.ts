@@ -51,22 +51,25 @@ export const authenticateSocket = async (
   if (typeof a['token'] !== 'string') return err('UNAUTHORIZED');
   const verified = await verifyAccessToken(d.jwtSecret, a['token'], d.clock.now());
   if (!verified.ok) return err('UNAUTHORIZED');
-  const user = await findUserById(d.db, verified.value.userId);
-  if (user === null || !user.isActive || user.tokenVersion !== verified.value.version)
-    return err('UNAUTHORIZED');
+  const identity = await refreshStaffIdentity(d.db, verified.value.userId, verified.value.version);
+  return identity === null ? err('UNAUTHORIZED') : ok(identity);
+};
+
+/** Re-reads an account and its teams; null when it was disabled or its token version moved on (logout, password change). */
+export const refreshStaffIdentity = async (
+  db: Db,
+  userId: string,
+  version: number,
+): Promise<Extract<SocketIdentity, { kind: 'staff' }> | null> => {
+  const user = await findUserById(db, userId);
+  if (user === null || !user.isActive || user.tokenVersion !== version) return null;
   const principal: Principal =
     user.role === 'admin'
       ? { kind: 'admin', userId: user.id }
       : {
           kind: 'staff',
           userId: user.id,
-          memberships: (await loadMemberships(d.db, user.id)) as readonly Membership[],
+          memberships: (await loadMemberships(db, user.id)) as readonly Membership[],
         };
-  return ok({
-    kind: 'staff',
-    userId: user.id,
-    name: user.name,
-    principal,
-    version: user.tokenVersion,
-  });
+  return { kind: 'staff', userId: user.id, name: user.name, principal, version: user.tokenVersion };
 };

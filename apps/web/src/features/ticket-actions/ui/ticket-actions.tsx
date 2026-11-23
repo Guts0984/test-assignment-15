@@ -21,6 +21,7 @@ export function TicketActions({ ticket, directory, meId, canClose }: Props) {
   const client = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [mergeNumber, setMergeNumber] = useState('');
+  const [confirmingMerge, setConfirmingMerge] = useState(false);
   const path = { params: { path: { id: ticket.id } } };
   const done = async (): Promise<void> => {
     setError(null);
@@ -60,6 +61,7 @@ export function TicketActions({ ticket, directory, meId, canClose }: Props) {
       api.POST('/api/v1/tickets/{id}/merge', { ...path, body: { targetTicketId: target.id } }),
     );
     setMergeNumber('');
+    setConfirmingMerge(false);
   };
 
   return (
@@ -184,7 +186,9 @@ export function TicketActions({ ticket, directory, meId, canClose }: Props) {
           className="flex items-end gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            void run(merge);
+            // Merging moves every message into the other ticket and closes this one; it asks before it does that.
+            if (!confirmingMerge) setConfirmingMerge(true);
+            else void run(merge);
           }}
         >
           <label className="flex-1">
@@ -193,7 +197,10 @@ export function TicketActions({ ticket, directory, meId, canClose }: Props) {
               id="merge-number"
               inputMode="numeric"
               value={mergeNumber}
-              onChange={(e) => setMergeNumber(e.target.value.replace(/[^0-9]/g, ''))}
+              onChange={(e) => {
+                setConfirmingMerge(false);
+                setMergeNumber(e.target.value.replace(/[^0-9]/g, ''));
+              }}
               placeholder="100123"
               data-testid="merge-number"
             />
@@ -204,8 +211,13 @@ export function TicketActions({ ticket, directory, meId, canClose }: Props) {
             disabled={mergeNumber.length < 4}
             data-testid="merge"
           >
-            Merge
+            {confirmingMerge ? `Confirm: merge into #${mergeNumber}` : 'Merge'}
           </Button>
+          {confirmingMerge ? (
+            <Button type="button" variant="secondary" onClick={() => setConfirmingMerge(false)}>
+              Cancel
+            </Button>
+          ) : null}
         </form>
       ) : null}
     </div>

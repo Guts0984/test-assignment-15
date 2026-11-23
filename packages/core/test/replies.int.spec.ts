@@ -53,22 +53,29 @@ const setup = async () => {
   };
 };
 
-const reply = (
+/** `confirm: true` confirms everything that exists right now, like the "Send anyway" button after the warning. */
+const reply = async (
   s: Awaited<ReturnType<typeof setup>>,
   who: { id: string },
   now: Date,
   over: { lastSeenSeq?: number; confirm?: boolean; body?: string } = {},
-) =>
-  run(db, now, (c) =>
+) => {
+  const top =
+    over.confirm === true
+      ? ((await db.message.aggregate({ where: { ticketId: s.ticketId }, _max: { seq: true } }))._max
+          .seq ?? 0)
+      : null;
+  return run(db, now, (c) =>
     createReply(c, {
       ticketId: s.ticketId,
       actor: s.actor(who),
       authorName: 'Agent',
       body: over.body ?? 'On it',
       lastSeenSeq: over.lastSeenSeq ?? 1,
-      confirmNewMessages: over.confirm ?? false,
+      confirmedSeq: top,
     }),
   );
+};
 
 describe('agent reply and undo send (invariant 5)', () => {
   it('schedules the reply 10 s ahead, hides the email until then and records the first response', async () => {
@@ -337,5 +344,40 @@ describe('history is complete and honest (requirement: who and when)', () => {
     ]);
     expect(ev[2]?.actorUserId).toBe(s.agent.id);
     expect(ev[3]?.createdAt).toEqual(at(T0, 1000));
+  });
+});
+
+describe('the new-message guard cannot be argued around (review finding F4)', () => {
+  it('a seq from the future is refused, and a confirmation covers only what the agent saw', async () => {
+    const s = await setup();
+    const huge = await run(db, T0, (c) =>
+      createReply(c, {
+        ticketId: s.ticketId,
+        actor: s.actor(s.agent),
+        authorName: 'Agent',
+        body: 'x',
+        lastSeenSeq: 1_000_000,
+        confirmedSeq: null,
+      }),
+    );
+    expect(huge.ok ? 'ok' : huge.error.code).toBe('VALIDATION_FAILED');
+    const sentBy = (await reply(s, s.agent, T0)).ok;
+    expect(sentBy).toBe(true);
+    // the colleague saw seq 1, was warned about seq 2 and confirmed it; a message that arrives later needs a new confirmation
+    const warned = await reply(s, s.other, at(T0, 1000), { lastSeenSeq: 1 });
+    expect(warned.ok ? 'ok' : warned.error.code).toBe('TICKET_HAS_NEW_MESSAGES');
+    await db.$executeRaw`INSERT INTO messages (id, ticket_id, seq, kind, direction, author_kind, body, created_at)
+      VALUES (gen_random_uuid(), ${s.ticketId}::uuid, 3, 'public', 'inbound', 'customer', 'late', now())`;
+    const stale = await run(db, at(T0, 2000), (c) =>
+      createReply(c, {
+        ticketId: s.ticketId,
+        actor: s.actor(s.other),
+        authorName: 'Agent',
+        body: 'y',
+        lastSeenSeq: 1,
+        confirmedSeq: 2,
+      }),
+    );
+    expect(stale.ok ? 'ok' : stale.error.code).toBe('TICKET_HAS_NEW_MESSAGES');
   });
 });

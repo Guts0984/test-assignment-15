@@ -42,6 +42,7 @@ export function ReplyComposer({ ticketId, lastSeenSeq, disabled, onTyping }: Pro
   const baseSeq = useRef<number | null>(null);
   const undoButton = useRef<HTMLButtonElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const conflictBox = useRef<HTMLDivElement>(null);
 
   // The draft is restored from storage after a reload, per ticket and per kind.
   useEffect(() => {
@@ -61,6 +62,14 @@ export function ReplyComposer({ ticketId, lastSeenSeq, disabled, onTyping }: Pro
   useEffect(() => {
     if (undo !== null) undoButton.current?.focus();
   }, [undo]);
+  // The warning takes focus when it appears, so a keyboard user hears and reaches it; closing it gives focus back to the editor.
+  useEffect(() => {
+    if (conflict !== null) conflictBox.current?.focus();
+  }, [conflict]);
+  const closeConflict = (): void => {
+    setConflict(null);
+    textRef.current?.focus();
+  };
 
   const update = (text: string): void => {
     if (baseSeq.current === null && text !== '') baseSeq.current = lastSeenSeq;
@@ -88,8 +97,8 @@ export function ReplyComposer({ ticketId, lastSeenSeq, disabled, onTyping }: Pro
             params: { path: { id: ticketId } },
             body: {
               body: text,
-              lastSeenSeq: conflict?.latestSeq ?? baseSeq.current ?? lastSeenSeq,
-              confirmNewMessages: confirm,
+              lastSeenSeq: baseSeq.current ?? lastSeenSeq,
+              confirmedSeq: confirm ? (conflict?.latestSeq ?? null) : null,
             },
           }),
         );
@@ -181,6 +190,14 @@ export function ReplyComposer({ ticketId, lastSeenSeq, disabled, onTyping }: Pro
         </p>
         {conflict !== null ? (
           <div
+            ref={conflictBox}
+            tabIndex={-1}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.stopPropagation();
+                closeConflict();
+              }
+            }}
             role="alertdialog"
             aria-label="New messages"
             data-testid="conflict"
@@ -200,15 +217,23 @@ export function ReplyComposer({ ticketId, lastSeenSeq, disabled, onTyping }: Pro
               <Button onClick={() => void send(true)} data-testid="send-anyway">
                 Send anyway
               </Button>
-              <Button variant="secondary" onClick={() => setConflict(null)}>
+              <Button variant="secondary" onClick={closeConflict}>
                 Keep editing
               </Button>
             </div>
           </div>
         ) : null}
-        {!isNote && baseSeq.current !== null && lastSeenSeq > baseSeq.current && conflict === null ? (
-          <p role="status" data-testid="new-while-writing" className="mb-2 rounded-md border border-amber-600 bg-amber-500/15 p-2 text-sm">
-            New messages arrived while you were writing. You will be asked to confirm before sending.
+        {!isNote &&
+        baseSeq.current !== null &&
+        lastSeenSeq > baseSeq.current &&
+        conflict === null ? (
+          <p
+            role="status"
+            data-testid="new-while-writing"
+            className="mb-2 rounded-md border border-amber-600 bg-amber-500/15 p-2 text-sm"
+          >
+            New messages arrived while you were writing. You will be asked to confirm before
+            sending.
           </p>
         ) : null}
         {error !== null ? <ErrorNote>{error}</ErrorNote> : null}

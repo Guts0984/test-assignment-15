@@ -75,6 +75,10 @@ export const startStub = async (o: StubOptions): Promise<RunningStub> => {
     onAccepted: respond,
     stats,
   });
+  // The SMTP server emits `error` for socket-level problems such as ECONNRESET; without a listener Node would exit
+  // and every stored message would be lost.
+  smtp.on('error', () => undefined);
+  smtp.server.on('error', () => undefined);
   const http = createHttpServer({ store, chaos, deliverer, stats, mailDomain: o.mailDomain });
   await new Promise<void>((resolve) => smtp.listen(o.smtpPort, '0.0.0.0', resolve));
   await new Promise<void>((resolve) => http.listen(o.httpPort, '0.0.0.0', resolve));

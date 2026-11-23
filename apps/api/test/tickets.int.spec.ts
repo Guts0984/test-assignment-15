@@ -133,7 +133,7 @@ describe('reply, undo and the concurrent-reply warning over HTTP', () => {
     const confirmed = await who.client.post(`${T}/${w.ticketId}/replies`, {
       body: 'sent anyway',
       lastSeenSeq: 1,
-      confirmNewMessages: true,
+      confirmedSeq: err.data.latestSeq,
     });
     expect(confirmed.status).toBe(201);
   });
@@ -268,6 +268,15 @@ describe('search, dashboard and reports', () => {
     const byEmail = (await w.agent.client.get(`/api/v1/search?q=${encodeURIComponent(t.from)}`))
       .json as { items: { id: string }[] };
     expect(byEmail.items.map((i) => i.id)).toContain(t.ticketId);
+    // a customer name that appears in no message must still find the ticket (review F7)
+    const uniqueName = `Zq${uniq('n').replace('-', '')} Surname`;
+    await db.customer.update({ where: { email: t.from }, data: { name: uniqueName } });
+    const byName = (
+      await w.agent.client.get(
+        `/api/v1/search?q=${encodeURIComponent(uniqueName.split(' ')[0] ?? '')}`,
+      )
+    ).json as { items: { id: string }[] };
+    expect(byName.items.map((i) => i.id)).toEqual([t.ticketId]);
     for (const evil of ["'; DROP TABLE tickets;--", '"', '((', '&|!', '%', '\\']) {
       expect(
         (await w.agent.client.get(`/api/v1/search?q=${encodeURIComponent(evil)}`)).status,

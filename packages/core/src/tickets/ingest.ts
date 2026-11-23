@@ -31,6 +31,7 @@ type InboundRow = { id: string; mailbox_address: string; raw: Buffer };
 const findThread = async (
   c: Ctx,
   mail: ParsedMail,
+  requireCustomerSender = true,
 ): Promise<{ ticketId: string; viaOutboundId: string | null } | null> => {
   const candidates = [...mail.inReplyTo, ...[...mail.references].reverse()];
   const unique = [...new Set(candidates)];
@@ -45,7 +46,10 @@ const findThread = async (
   for (const id of unique) {
     const hit = matches.find((m) => m.rfc === id);
     if (hit !== undefined) {
-      found = { ticketId: hit.ticket_id, viaOutboundId: hit.outbound ? hit.rfc : null };
+      // A reply's Message-ID exists both as a thread message and as an outbound email; the outbound row is what a
+      // bounce must mark, so it counts even when the message row is found first.
+      const outbound = matches.some((m) => m.rfc === id && m.outbound);
+      found = { ticketId: hit.ticket_id, viaOutboundId: outbound ? hit.rfc : null };
       break;
     }
   }
@@ -63,7 +67,7 @@ const findThread = async (
   const owner = await c.tx.$queryRaw<{ email: string }[]>`
     SELECT c.email FROM tickets t JOIN customers c ON c.id = t.customer_id WHERE t.id = ${rootId}::uuid`;
   // Anti-forgery: a spoofed header or subject number only counts when it comes from the ticket's own customer.
-  if (owner[0]?.email !== mail.fromEmail) return null;
+  if (requireCustomerSender && owner[0]?.email !== mail.fromEmail) return null;
   return { ticketId: found.ticketId, viaOutboundId: found.viaOutboundId };
 };
 
@@ -128,7 +132,8 @@ export const applyInbound = async (
     returnPath: mail.returnPath,
     from: mail.fromEmail,
   });
-  const thread = await findThread(c, mail);
+  // A bounce comes from a mail server, not from the customer, so it is matched by the Message-ID it refers to alone.
+  const thread = await findThread(c, mail, verdict?.kind !== 'bounce');
 
   if (verdict !== null) {
     if (thread === null) {

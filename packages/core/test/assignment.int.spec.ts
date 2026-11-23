@@ -25,7 +25,8 @@ describe('INV-1: the agent limit is never exceeded and load stays level', () => 
     const agents = await Promise.all(
       Array.from({ length: 10 }, () => createAgent(db, team.id, { limit: 20 })),
     );
-    await burst(500, () => newTicket(db, team.id));
+    // 100 at a time: the 500 truly simultaneous arrivals are covered by the stack test (ACC-6); here the pool of a busy machine must not be the thing that fails.
+    for (let i = 0; i < 5; i += 1) await burst(100, () => newTicket(db, team.id));
     const runs = await burst(3, () => assignAll(team.id));
     expect(runs.reduce((a, b) => a + b, 0)).toBe(200);
     for (const a of agents) {
@@ -182,5 +183,45 @@ describe('INV-2 in the worker: auto-assignment racing "take it"', () => {
       );
       expect(ev).toHaveLength(1); // one honest history entry, never both a take and an auto-assignment
     }
+  });
+});
+
+describe('a ticket nobody can take does not block the queue (review F2)', () => {
+  it('a Polish ticket whose only Polish speaker is off shift waits while the English tickets behind it are assigned', async () => {
+    const team = await createTeam(db);
+    const english = await createAgent(db, team.id);
+    const polish = await createAgent(db, team.id, { onShift: false });
+    await db.user.update({ where: { id: polish.id }, data: { languages: ['pl'] } });
+    const pl = await newTicket(db, team.id, { language: 'pl', priority: 'urgent' });
+    const en1 = await newTicket(db, team.id, { language: 'en' });
+    const en2 = await newTicket(db, team.id, { language: 'en' });
+    const r = await inTx(db, (tx) => assignQueuedTickets(tx, team.id, T0, 40));
+    expect(r.assigned).toBe(2);
+    const owner = async (id: string) =>
+      (await db.ticket.findUniqueOrThrow({ where: { id } })).assigneeId;
+    expect([
+      await owner(pl.ticketId),
+      await owner(en1.ticketId),
+      await owner(en2.ticketId),
+    ]).toEqual([null, english.id, english.id]);
+  });
+});
+
+describe('an agent who goes off shift during a run gets nothing more (review F20)', () => {
+  it('the candidate list is re-checked against the committed shift before each assignment', async () => {
+    const team = await createTeam(db);
+    const a = await createAgent(db, team.id);
+    const b = await createAgent(db, team.id);
+    await newTicket(db, team.id);
+    await newTicket(db, team.id);
+    // a goes off shift after the run read its candidates but before it assigned
+    const r = await inTx(db, async (tx) => {
+      const run = assignQueuedTickets(tx, team.id, T0, 40);
+      await db.user.update({ where: { id: a.id }, data: { onShift: false } });
+      return run;
+    });
+    expect(r.assigned).toBe(2);
+    expect(await db.ticket.count({ where: { teamId: team.id, assigneeId: a.id } })).toBe(0);
+    expect(await db.ticket.count({ where: { teamId: team.id, assigneeId: b.id } })).toBe(2);
   });
 });

@@ -78,7 +78,12 @@ export {
   type Principal,
   type TicketScope,
 } from './permissions/permissions';
-export { compareCandidates, selectAgent, type AgentCandidate } from './assignment/select-agent';
+export {
+  compareCandidates,
+  hasFreeAgent,
+  selectAgent,
+  type AgentCandidate,
+} from './assignment/select-agent';
 export {
   routeTicket,
   subjectHasKeyword,

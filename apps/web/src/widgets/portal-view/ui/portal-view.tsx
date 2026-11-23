@@ -43,7 +43,7 @@ export function PortalView() {
   useEffect(() => {
     if (typeof token !== 'string') return;
     tokenStore.set(null);
-    const conn = connectRealtime({ ticketToken: token });
+    const conn = connectRealtime(() => ({ ticketToken: token }));
     const refresh = (): void => void client.invalidateQueries({ queryKey: ['portal'] });
     conn.socket.on('message.created', refresh);
     conn.socket.on('ticket.updated', refresh);

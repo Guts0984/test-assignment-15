@@ -95,13 +95,14 @@ export const createAuth = (d: AuthDeps) => {
     },
 
     /** Revokes the refresh family and invalidates outstanding access tokens by bumping the user's token version. */
-    logout: async (token: string | null): Promise<void> => {
-      if (token === null) return;
+    logout: async (token: string | null): Promise<string | null> => {
+      if (token === null) return null;
       const known = await findRefreshToken(d.db, hashToken(token));
-      if (known === null) return;
+      if (known === null) return null;
       const now = d.clock.now();
       await revokeFamily(d.db, known.familyId, now);
       await bumpTokenVersion(d.db, known.userId);
+      return known.userId;
     },
 
     me: (userId: string): Promise<UserView | null> => loadUserView(d.db, userId),

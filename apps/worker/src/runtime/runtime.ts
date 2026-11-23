@@ -78,6 +78,7 @@ export const startWorkerRuntime = async (c: RuntimeConfig): Promise<WorkerRuntim
     queues,
     horizonMs: c.reconcileHorizonMs,
     generation: () => dbClock?.generation() ?? 0,
+    warningRatio: c.ticket.warningRatio,
   });
 
   const workers = queueNames.map((kind) => {

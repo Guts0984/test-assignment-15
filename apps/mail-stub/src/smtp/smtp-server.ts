@@ -36,6 +36,7 @@ export const createSmtpServer = (d: SmtpDeps): SMTPServer =>
     onData: (stream, session, callback) => {
       const chunks: Buffer[] = [];
       stream.on('data', (c: Buffer) => chunks.push(c));
+      stream.on('error', (e: Error) => callback(e)); // a connection cut in the middle of DATA must not take the stub down
       stream.on('end', () => {
         d.stats.transactions += 1;
         if (d.chaos.shouldFailTransaction()) {

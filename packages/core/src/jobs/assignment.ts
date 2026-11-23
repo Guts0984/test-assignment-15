@@ -1,4 +1,4 @@
-import { selectAgent, type AgentCandidate, type Language } from '@helpdesk/shared';
+import { hasFreeAgent, selectAgent, type AgentCandidate, type Language } from '@helpdesk/shared';
 import type { Tx } from '../db/client';
 import { appendTicketEvent } from '../events/ticket-events';
 import { collectorOf } from '../realtime/collector';
@@ -47,16 +47,32 @@ export const assignQueuedTickets = async (
   let assigned = 0;
   const candidates = await loadCandidates(tx, teamId);
   const load = new Map(candidates.map((c) => [c.userId, c]));
+  // A ticket nobody can take right now (for example its language has no free speaker) must not block the ones behind it.
+  const skipped: string[] = [];
   while (assigned < batch) {
     const rows = await tx.$queryRaw<{ id: string; language: string }[]>`
       SELECT id, language FROM tickets
        WHERE team_id = ${teamId}::uuid AND assignee_id IS NULL AND status IN ('new', 'open', 'waiting_customer', 'on_hold')
+         AND id <> ALL(${skipped}::uuid[])
        ORDER BY next_due_at NULLS LAST, created_at
        LIMIT 1 FOR UPDATE SKIP LOCKED`;
     const t = rows[0];
     if (t === undefined) return { assigned, more: false };
     const pick = selectAgent([...load.values()], t.language as Language);
-    if (pick === null) return { assigned, more: false };
+    if (pick === null) {
+      // Nobody is free at all: the whole queue waits. Somebody is free but not for this ticket: look at the next one.
+      if (!hasFreeAgent([...load.values()])) return { assigned, more: false };
+      skipped.push(t.id);
+      continue;
+    }
+    // The candidate list was read before the loop; an agent who went off shift (or was disabled) in the meantime must
+    // not receive the ticket. FOR SHARE waits for a concurrent shift change to commit and then sees its result.
+    const still = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM users WHERE id = ${pick}::uuid AND is_active AND on_shift FOR SHARE`;
+    if (still.length === 0) {
+      load.delete(pick);
+      continue;
+    }
     await tx.$executeRaw`UPDATE tickets SET assignee_id = ${pick}::uuid, queued_at = NULL, version = version + 1, updated_at = ${now} WHERE id = ${t.id}::uuid`;
     await tx.$executeRaw`UPDATE users SET last_assigned_at = ${now} WHERE id = ${pick}::uuid`;
     collectorOf(tx).updated.add(t.id);

@@ -2,7 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { restoreSession, sessionStore, useSession } from '@/entities/session';
-import { tokenStore } from '@/shared/api';
+import { refreshSession, tokenStore } from '@/shared/api';
 import { isNewer } from '@/shared/lib';
 import { connectRealtime, SocketContext, type SocketContextValue } from '@/shared/socket';
 
@@ -23,9 +23,8 @@ function RealtimeBridge({ children, client }: { children: ReactNode; client: Que
       setValue({ socket: null, connected: false });
       return;
     }
-    const conn = connectRealtime({ token });
+    const conn = connectRealtime(() => ({ token: tokenStore.get() ?? token }), refreshSession);
     const { socket } = conn;
-    let first = true;
     const refresh = (ticketId?: string): void => {
       void client.invalidateQueries({ queryKey: ['queue'] });
       void client.invalidateQueries({ queryKey: ['unassigned'] });
@@ -41,8 +40,8 @@ function RealtimeBridge({ children, client }: { children: ReactNode; client: Que
     };
     socket.on('connect', () => {
       setValue({ socket, connected: true });
-      if (!first) void client.invalidateQueries(); // reconnected: catch up on everything that was missed
-      first = false;
+      // Always refetch on connect: events published before the first connection (or while reconnecting) were not delivered.
+      void client.invalidateQueries();
     });
     socket.on('disconnect', () => setValue({ socket, connected: false }));
     socket.on('ticket.created', onTicket);

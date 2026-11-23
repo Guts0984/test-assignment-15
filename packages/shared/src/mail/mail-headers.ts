@@ -93,5 +93,15 @@ export const detectAutomated = (
   )
     return { kind: 'autoreply', reason: 'X-Autoreply/X-Autorespond' };
 
+  // Microsoft Exchange and Outlook mark their automatic replies with X-Auto-Response-Suppress AND an "Automatic reply:"
+  // subject. The header alone is not enough: many CRMs add it to ordinary human mail, asking others not to auto-reply.
+  const suppress = getHeader(headers, 'x-auto-response-suppress')?.toLowerCase() ?? '';
+  const subject = (getHeader(headers, 'subject') ?? '').trim();
+  const autoSubject = /^(automatic reply|auto[- ]?reply|autoreply|out of office)\s*[:-]/i.test(
+    subject,
+  );
+  if (autoSubject && suppress !== '')
+    return { kind: 'autoreply', reason: 'Outlook automatic reply' };
+
   return null;
 };

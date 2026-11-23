@@ -6,7 +6,7 @@ import { CurrentAuth } from '../../common/auth/current-auth';
 import type { RequestAuth } from '../../common/auth/request-auth';
 import { ApiErrors } from '../../common/errors/api-errors.decorator';
 import { appError } from '../../common/errors/app-error';
-import { AUTH, ENV } from '../../infra/tokens';
+import { ACCESS_REVOKER, AUTH, ENV } from '../../infra/tokens';
 import type { AuthUseCases } from './auth.usecases';
 import { clearRefreshCookie, readCookie, REFRESH_COOKIE, refreshCookie } from './domain/cookies';
 import { AuthResponseDto, LoginDto, OkDto, UserViewDto } from './dto/auth.dto';
@@ -19,6 +19,7 @@ export class AuthController {
   constructor(
     @Inject(AUTH) private readonly auth: AuthUseCases,
     @Inject(ENV) private readonly env: AuthEnv,
+    @Inject(ACCESS_REVOKER) private readonly revoker: { disconnectUser: (userId: string) => void },
   ) {}
 
   private get secure(): boolean {
@@ -82,7 +83,9 @@ export class AuthController {
   @ApiOkResponse({ type: OkDto })
   @ApiErrors()
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<OkDto> {
-    await this.auth.logout(readCookie(req.headers.cookie, REFRESH_COOKIE));
+    const userId = await this.auth.logout(readCookie(req.headers.cookie, REFRESH_COOKIE));
+    // The token version was bumped, so every open WebSocket of this user is cut on both api copies.
+    if (userId !== null) this.revoker.disconnectUser(userId);
     res.setHeader('set-cookie', clearRefreshCookie(this.secure));
     return { ok: true };
   }

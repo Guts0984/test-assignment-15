@@ -1111,8 +1111,7 @@ export interface components {
         ReplyInputDto: {
             body: string;
             lastSeenSeq: number;
-            /** @default false */
-            confirmNewMessages: boolean;
+            confirmedSeq?: number | null;
         };
         ReplyCreatedDto: {
             /** Format: uuid */

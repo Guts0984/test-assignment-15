@@ -19,6 +19,8 @@ export type NewJob = {
   readonly now: Date;
   readonly payload?: Readonly<Record<string, unknown>>;
   readonly maxAttempts?: number;
+  /** False for the reconciler: a job that ran out of attempts stays dead until an administrator or a user action re-arms it. */
+  readonly rearmDead?: boolean;
 };
 
 /**
@@ -32,7 +34,7 @@ export const upsertJob = async (db: Queryable, j: NewJob): Promise<void> => {
             ${j.maxAttempts ?? 8}, ${j.now})
     ON CONFLICT (dedupe_key) DO UPDATE
       SET status = 'pending', run_at = EXCLUDED.run_at, attempts = 0, last_error = NULL, completed_at = NULL
-      WHERE jobs.status IN ('done', 'dead', 'cancelled')`;
+      WHERE jobs.status IN ('done', 'cancelled') OR (jobs.status = 'dead' AND ${j.rearmDead ?? true})`;
 };
 
 /** Asks for a team assignment run; many requests collapse into one pending job. */

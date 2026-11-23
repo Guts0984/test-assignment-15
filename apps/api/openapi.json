@@ -6988,9 +6988,11 @@
             "minimum": 0,
             "exclusiveMinimum": false
           },
-          "confirmNewMessages": {
-            "type": "boolean",
-            "default": false
+          "confirmedSeq": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": false,
+            "nullable": true
           }
         },
         "required": [

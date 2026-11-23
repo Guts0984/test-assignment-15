@@ -25,9 +25,9 @@ export const createSmtpSender = (o: {
     ignoreTLS: true,
     pool: true,
     maxConnections: 5,
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 30_000,
+    connectionTimeout: 5_000,
+    greetingTimeout: 5_000,
+    socketTimeout: 20_000,
   });
   return {
     send: async (m: OutboundMessage) => {

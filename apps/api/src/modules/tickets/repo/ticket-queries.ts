@@ -149,7 +149,7 @@ export const searchTickets = async (
     q, teams, limit, offset,
   );
   const byName =
-    rows.length === 0 || rows.length >= limit
+    rows.length >= limit
       ? []
       : await db.$queryRawUnsafe<Row[]>(
           `SELECT ${COLS} ${FROM} WHERE c.name ILIKE $1 AND ${cond} ORDER BY t.updated_at DESC LIMIT $3`,

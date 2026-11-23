@@ -7,7 +7,8 @@ export const testDb = (): Db => {
   if (shared === null) {
     const url = process.env.TEST_DATABASE_URL;
     if (url === undefined) throw new Error('TEST_DATABASE_URL is not set');
-    shared = createDb(url);
+    // Bursts of 500 concurrent operations queue for the small pool; give them time instead of failing on a busy machine.
+    shared = createDb(`${url}${url.includes('?') ? '&' : '?'}pool_timeout=60`);
   }
   return shared;
 };

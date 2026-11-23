@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
+import { connect } from 'node:net';
 import type { AddressInfo } from 'node:net';
 import nodemailer from 'nodemailer';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -249,5 +250,32 @@ describe('chaos mode', () => {
       400,
     );
     expect(await (await api('/')).text()).toContain('chaos ON');
+  });
+});
+
+describe('abusive SMTP clients (review F9)', () => {
+  beforeEach(() => launch({ enabled: false }));
+
+  it('survives connections that are reset in the middle of a transaction and keeps the stored mail', async () => {
+    await smtp().sendMail({
+      from: 'a@x.test',
+      to: 'support@helpdesk.test',
+      subject: 'KEPT',
+      text: 'kept',
+    });
+    for (let i = 0; i < 5; i += 1) {
+      const sock = connect(stub.smtpPort, '127.0.0.1');
+      await new Promise<void>((r) => sock.once('data', () => r()));
+      sock.write(
+        'EHLO x\r\nMAIL FROM:<a@x.test>\r\nRCPT TO:<support@helpdesk.test>\r\nDATA\r\nSubject: half\r\n\r\nhalf a mes',
+      );
+      await new Promise((r) => setTimeout(r, 30));
+      sock.resetAndDestroy();
+    }
+    await new Promise((r) => setTimeout(r, 200));
+    const list = (await (await api('/api/messages')).json()) as
+      { messages?: unknown[] } | unknown[];
+    const count = Array.isArray(list) ? list.length : (list.messages?.length ?? 0);
+    expect(count).toBe(1);
   });
 });

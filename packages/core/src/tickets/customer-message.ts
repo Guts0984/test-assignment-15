@@ -88,8 +88,27 @@ export const appendCustomerMessage = async (
     });
     await syncSla(c.tx, t.id, c.now, c.cfg.warningRatio);
   } else if (t.status === 'resolved') {
-    await c.tx
-      .$executeRaw`UPDATE tickets SET status = 'open', resolved_at = NULL WHERE id = ${t.id}::uuid`;
+    // A resolved ticket does not count toward its agent's load; reopening it does. When the agent is full the
+    // reopened ticket goes back to the team queue instead of failing and losing the customer's message.
+    const room =
+      t.assigneeId === null
+        ? true
+        : (
+            await c.tx.$queryRaw<{ ok: boolean }[]>`
+              SELECT open_count < ticket_limit AS ok FROM users WHERE id = ${t.assigneeId}::uuid FOR UPDATE`
+          )[0]?.ok === true;
+    if (room) {
+      await c.tx
+        .$executeRaw`UPDATE tickets SET status = 'open', resolved_at = NULL WHERE id = ${t.id}::uuid`;
+    } else {
+      await c.tx
+        .$executeRaw`UPDATE tickets SET status = 'open', resolved_at = NULL, assignee_id = NULL, queued_at = ${c.now}, version = version + 1 WHERE id = ${t.id}::uuid`;
+      await history(c.tx, t.id, 'returned_to_queue', customer, c.now, {
+        fromAgentId: t.assigneeId,
+        reason: 'agent_at_limit',
+      });
+      await requestTeamAssignment(c.tx, t.teamId, c.now);
+    }
     await cancelJob(c.tx, `auto_close:${t.id}`, c.now);
     await history(c.tx, t.id, 'reopened', customer, c.now, { from: 'resolved', to: 'open' });
     await syncSla(c.tx, t.id, c.now, c.cfg.warningRatio);

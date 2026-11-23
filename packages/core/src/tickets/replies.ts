@@ -33,7 +33,8 @@ export const createReply = async (
     authorName: string;
     body: string;
     lastSeenSeq: number;
-    confirmNewMessages: boolean;
+    /** The newest message seq the agent saw in the warning, or null when there was none. */
+    confirmedSeq: number | null;
   },
 ): Promise<Result<ReplyResult, TicketError>> => {
   const t = await getTicket(c.tx, i.ticketId, true);
@@ -41,24 +42,27 @@ export const createReply = async (
   if (t.status === 'closed' || t.mergedIntoId !== null)
     return fail('INVALID_STATUS_TRANSITION', 'A closed ticket cannot be replied to');
 
-  if (!i.confirmNewMessages) {
-    const newer = await c.tx.$queryRaw<Conflicting[]>`
-      SELECT id, seq, kind, body, created_at, author_kind FROM messages
-       WHERE ticket_id = ${t.id}::uuid AND kind = 'public' AND cancelled_at IS NULL AND seq > ${i.lastSeenSeq}
-       ORDER BY seq`;
-    if (newer.length > 0) {
-      return fail('TICKET_HAS_NEW_MESSAGES', 'The ticket has new messages since you opened it', {
-        messages: newer.map((m) => ({
-          id: m.id,
-          seq: m.seq,
-          body: m.body,
-          authorKind: m.author_kind,
-          createdAt: m.created_at.toISOString(),
-        })),
-        latestSeq: newer[newer.length - 1]?.seq ?? i.lastSeenSeq,
-      });
-    }
+  const seen = Math.max(i.lastSeenSeq, i.confirmedSeq ?? 0);
+  const newer = await c.tx.$queryRaw<Conflicting[]>`
+    SELECT id, seq, kind, body, created_at, author_kind FROM messages
+     WHERE ticket_id = ${t.id}::uuid AND kind = 'public' AND cancelled_at IS NULL AND seq > ${seen}
+     ORDER BY seq`;
+  if (newer.length > 0) {
+    return fail('TICKET_HAS_NEW_MESSAGES', 'The ticket has new messages since you opened it', {
+      messages: newer.map((m) => ({
+        id: m.id,
+        seq: m.seq,
+        body: m.body,
+        authorKind: m.author_kind,
+        createdAt: m.created_at.toISOString(),
+      })),
+      latestSeq: newer[newer.length - 1]?.seq ?? seen,
+    });
   }
+  const top = await c.tx.$queryRaw<{ seq: number | null }[]>`
+    SELECT max(seq)::int AS seq FROM messages WHERE ticket_id = ${t.id}::uuid`;
+  if (seen > (top[0]?.seq ?? 0))
+    return fail('VALIDATION_FAILED', 'lastSeenSeq is ahead of the ticket: no such message');
 
   const customer = await c.tx.$queryRaw<
     { email: string }[]

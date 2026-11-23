@@ -567,7 +567,7 @@ describe('reply after first response marks the ticket open and keeps one timelin
         authorName: 'A',
         body: 'hello',
         lastSeenSeq: 1,
-        confirmNewMessages: false,
+        confirmedSeq: null,
       }),
     );
     expect((await ticketOf(db, t.ticketId)).status).toBe('open');

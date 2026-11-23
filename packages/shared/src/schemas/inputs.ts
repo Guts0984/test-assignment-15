@@ -39,8 +39,8 @@ export const replyInput = z
     body: multiLineText(LIMITS.bodyMax),
     /** Highest public message seq the agent has seen; guards against concurrent replies. */
     lastSeenSeq: z.number().int().min(0),
-    /** Set after the agent saw the conflicting messages and chose to send anyway. */
-    confirmNewMessages: z.boolean().default(false),
+    /** Highest message seq the agent saw in the "new messages" warning and chose to send past; later messages still need a new confirmation. */
+    confirmedSeq: z.number().int().min(0).nullish(),
   })
   .strict();
 
@@ -80,7 +80,11 @@ export const reportQueryInput = z
     priority: priority.optional(),
   })
   .strict()
-  .refine((v) => v.from <= v.to, { path: ['to'], message: 'must not be before "from"' });
+  .refine((v) => v.from <= v.to, { path: ['to'], message: 'must not be before "from"' })
+  .refine((v) => (Date.parse(v.to) - Date.parse(v.from)) / 86_400_000 <= 366, {
+    path: ['to'],
+    message: 'a report covers at most 366 days',
+  });
 
 const hoursShape = {
   timeZone: ianaZone,

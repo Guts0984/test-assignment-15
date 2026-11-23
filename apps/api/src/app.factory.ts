@@ -76,7 +76,7 @@ export const createApiApp = async (
   app.use(requestContext(clock, env.API_INSTANCE_ID));
   app.use(requireJsonBodies(['/api/v1/public/', '/api/v1/portal/', '/api/v1/inbound/']));
   app.useBodyParser('json', { limit: env.JSON_BODY_LIMIT_BYTES });
-  app.useBodyParser('raw', { type: 'message/rfc822', limit: 15 * 1024 * 1024 });
+  app.useBodyParser('raw', { type: 'message/rfc822', limit: 30 * 1024 * 1024 });
   const document = buildOpenApiDocument(app);
   SwaggerModule.setup('docs', app, document, { jsonDocumentUrl: 'docs/openapi.json' });
   app.enableShutdownHooks();

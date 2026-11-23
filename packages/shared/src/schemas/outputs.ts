@@ -279,5 +279,13 @@ export const notificationList = z.object({
 
 export const directoryView = z.object({
   teams: z.array(z.object({ id: z.string().uuid(), name: z.string(), timeZone: z.string() })),
-  agents: z.array(z.object({ id: z.string().uuid(), name: z.string(), teamId: z.string().uuid(), onShift: z.boolean(), role: z.enum(['agent', 'lead']) })),
+  agents: z.array(
+    z.object({
+      id: z.string().uuid(),
+      name: z.string(),
+      teamId: z.string().uuid(),
+      onShift: z.boolean(),
+      role: z.enum(['agent', 'lead']),
+    }),
+  ),
 });

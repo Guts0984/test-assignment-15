@@ -47,7 +47,7 @@ describe('customer portal', () => {
       await s.agent.client.post(`/api/v1/tickets/${s.ticketId}/replies`, {
         body: 'UNDONE-REPLY',
         lastSeenSeq: 2,
-        confirmNewMessages: true,
+        confirmedSeq: 3,
       })
     ).json as { messageId: string };
     await s.agent.client.del(`/api/v1/tickets/${s.ticketId}/replies/${undone.messageId}`);

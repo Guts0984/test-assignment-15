@@ -6,6 +6,7 @@ import {
   cancelReply,
   dueJobs,
   ensureDurableJobs,
+  requestTeamAssignment,
   runOutboundJob,
   runTxJob,
   txHandlers,
@@ -184,7 +185,7 @@ describe('INV-3c: SLA warnings and breaches fire on time, once, in order, even a
         authorName: 'A',
         body: 'hi',
         lastSeenSeq: 1,
-        confirmNewMessages: false,
+        confirmedSeq: null,
       }),
     );
     expect(
@@ -212,7 +213,7 @@ describe('INV-3c: SLA warnings and breaches fire on time, once, in order, even a
         authorName: 'A',
         body: 'hi',
         lastSeenSeq: 1,
-        confirmNewMessages: false,
+        confirmedSeq: null,
       }),
     );
     if (!r.ok) throw new Error('x');
@@ -243,7 +244,7 @@ describe('INV-4b / INV-5: outbound email is sent exactly once', () => {
         authorName: 'A',
         body: 'Answer',
         lastSeenSeq: 1,
-        confirmNewMessages: false,
+        confirmedSeq: null,
       }),
     );
     if (!r.ok) throw new Error('x');
@@ -463,5 +464,52 @@ describe('auto-close and survey (requirement: resolved -> closed after 3 days)',
     expect(
       await db.outboundEmail.count({ where: { ticketId: t.ticketId, purpose: 'survey' } }),
     ).toBe(1);
+  });
+});
+
+describe('dead jobs stay dead until someone re-arms them (review F3)', () => {
+  it('the reconciler does not revive a dead assignment job, a user action does', async () => {
+    const team = await createTeam(db);
+    await createAgent(db, team.id);
+    await newTicket(db, team.id);
+    await db.job.updateMany({
+      where: { dedupeKey: `assign:${team.id}` },
+      data: { status: 'dead', lastError: 'boom' },
+    });
+    await ensureDurableJobs(db, at(T0, 1000));
+    await ensureDurableJobs(db, at(T0, 2000));
+    expect(
+      (await db.job.findUniqueOrThrow({ where: { dedupeKey: `assign:${team.id}` } })).status,
+    ).toBe('dead');
+    await requestTeamAssignment(db, team.id, at(T0, 3000));
+    expect(
+      (await db.job.findUniqueOrThrow({ where: { dedupeKey: `assign:${team.id}` } })).status,
+    ).toBe('pending');
+  });
+});
+
+describe('missing SLA timer rows are rebuilt from the ticket (review F21)', () => {
+  it('a ticket with deadlines but no timers gets its warning and breach rows back, once', async () => {
+    const team = await createTeam(db);
+    const t = await newTicket(db, team.id);
+    await db.job.deleteMany({
+      where: { ref: t.ticketId, kind: { in: ['sla_warning', 'sla_breach'] } },
+    });
+    expect(
+      await db.job.count({
+        where: { ref: t.ticketId, kind: { in: ['sla_warning', 'sla_breach'] } },
+      }),
+    ).toBe(0);
+    await ensureDurableJobs(db, at(T0, 1000), { slaTimers: { warningRatio: 0.8 } });
+    const rows = await db.job.findMany({
+      where: { ref: t.ticketId, kind: { in: ['sla_warning', 'sla_breach'] } },
+    });
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    await ensureDurableJobs(db, at(T0, 2000), { slaTimers: { warningRatio: 0.8 } });
+    expect(
+      await db.job.count({
+        where: { ref: t.ticketId, kind: { in: ['sla_warning', 'sla_breach'] } },
+      }),
+    ).toBe(rows.length);
   });
 });

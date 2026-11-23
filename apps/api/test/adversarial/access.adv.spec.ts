@@ -71,7 +71,7 @@ describe('IDOR: staff cannot touch tickets of other teams (404, nothing changes)
         who.client.post(`${T}/${id}/replies`, {
           body: 'x',
           lastSeenSeq: 0,
-          confirmNewMessages: true,
+          confirmedSeq: 5,
         }),
         who.client.post(`${T}/${id}/notes`, { body: 'x' }),
         who.client.put(`${T}/${id}/status`, { status: 'resolved' }),
@@ -119,11 +119,11 @@ describe('IDOR: staff cannot touch tickets of other teams (404, nothing changes)
     expect(
       (
         await w.b.lead.client.get(
-          `/api/v1/reports?from=2020-01-01&to=2030-01-01&teamId=${w.a.team.id}`,
+          `/api/v1/reports?from=2026-01-01&to=2026-12-31&teamId=${w.a.team.id}`,
         )
       ).status,
     ).toBe(404);
-    const own = (await w.b.lead.client.get('/api/v1/reports?from=2020-01-01&to=2030-01-01'))
+    const own = (await w.b.lead.client.get('/api/v1/reports?from=2026-01-01&to=2026-12-31'))
       .json as { byTeam: { teamId: string }[] };
     expect(own.byTeam.every((t) => t.teamId === w.b.team.id)).toBe(true);
   });

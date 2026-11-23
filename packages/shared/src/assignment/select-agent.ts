@@ -12,6 +12,9 @@ export type AgentCandidate = {
   readonly languages: readonly Language[];
 };
 
+/** True when at least one agent could take a ticket right now, whatever its language. */
+export const hasFreeAgent = (team: readonly AgentCandidate[]): boolean => team.some(eligible);
+
 const eligible = (c: AgentCandidate): boolean =>
   c.role === 'agent' && c.active && c.onShift && c.openCount < c.limit;
 

@@ -21,7 +21,8 @@ export const Button = forwardRef<
       className={clsx(
         'rounded-md px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50',
         variant === 'primary' && 'bg-brand text-white hover:bg-brand-dark',
-        variant === 'secondary' && 'border border-[var(--line)] bg-[var(--card)] text-[var(--fg)] hover:bg-black/5',
+        variant === 'secondary' &&
+          'border border-[var(--line)] bg-[var(--card)] text-[var(--fg)] hover:bg-black/5',
         variant === 'danger' && 'bg-red-700 text-white hover:bg-red-800',
         variant === 'ghost' && 'hover:bg-black/5',
         className,

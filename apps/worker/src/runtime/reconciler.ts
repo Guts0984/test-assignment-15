@@ -10,7 +10,11 @@ export type ReconcilerDeps = {
   readonly queues: ReadonlyMap<string, Queue>;
   readonly horizonMs: number;
   readonly generation: () => number;
+  /** SLA warning point (share of the target); used to rebuild timer rows that are missing. */
+  readonly warningRatio: number;
 };
+
+const SLA_CHECK_EVERY_MS = 30_000;
 
 const SENTINEL = 'hd:redis-sentinel';
 
@@ -20,7 +24,11 @@ const SENTINEL = 'hd:redis-sentinel';
  * must exist (queued tickets, unsent mail). A copy has a deterministic id, so adding it twice is a no-op.
  */
 export const createReconciler = (d: ReconcilerDeps) => {
-  const state = { known: new Set<string>(), generation: Number.NaN };
+  const state = {
+    known: new Set<string>(),
+    generation: Number.NaN,
+    lastSlaCheck: Number.NEGATIVE_INFINITY,
+  };
 
   const resetCopies = async (): Promise<void> => {
     state.known.clear();
@@ -43,7 +51,14 @@ export const createReconciler = (d: ReconcilerDeps) => {
       }
       const fresh = await d.redis.set(SENTINEL, '1', 'NX');
       if (fresh === 'OK') state.known.clear(); // Redis was empty: nothing we added before is still there
-      await ensureDurableJobs(d.db, now);
+      // The SLA timer check is wider than the others, so it runs every 30 s instead of on every tick.
+      const slaDue = now.getTime() - state.lastSlaCheck >= SLA_CHECK_EVERY_MS || fresh === 'OK';
+      if (slaDue) state.lastSlaCheck = now.getTime();
+      await ensureDurableJobs(
+        d.db,
+        now,
+        slaDue ? { slaTimers: { warningRatio: d.warningRatio } } : {},
+      );
       const due = await dueJobs(d.db, now, d.horizonMs, 5000);
       let added = 0;
       for (const j of due) {

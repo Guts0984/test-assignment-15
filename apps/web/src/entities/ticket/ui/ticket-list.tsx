@@ -25,9 +25,14 @@ type Props = {
 /** Ticket rows, fully keyboard-operable: Arrow keys or j/k move, Enter opens, t takes (unassigned lists). */
 export function TicketList({ items, emptyText, label, onTake }: Props) {
   const router = useRouter();
-  const [index, setIndex] = useState(0);
+  // The selection follows the ticket, not the row position: live updates re-sort the list, and Enter must open the
+  // ticket the user is looking at. If that ticket left the list, the selection stays at the same position.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const lastIndex = useRef(0);
+  const found = items.findIndex((t) => t.id === selectedId);
+  const index = found >= 0 ? found : Math.min(lastIndex.current, Math.max(0, items.length - 1));
+  lastIndex.current = index;
   const container = useRef<HTMLUListElement>(null);
-  useEffect(() => setIndex((i) => Math.min(i, Math.max(0, items.length - 1))), [items.length]);
   useEffect(() => {
     container.current
       ?.querySelector<HTMLElement>(`[data-index="${index}"]`)
@@ -38,7 +43,8 @@ export function TicketList({ items, emptyText, label, onTake }: Props) {
     if (isTypingTarget(e.target as HTMLElement)) return;
     if (isListKey(e.key)) {
       e.preventDefault();
-      setIndex((i) => moveSelection({ index: i, count: items.length }, e.key as never).index);
+      const next = moveSelection({ index, count: items.length }, e.key as never).index;
+      setSelectedId(items[next]?.id ?? null);
     } else if (e.key === 'Enter') {
       const t = items[index];
       if (t !== undefined) router.push(`/tickets/${t.id}`);
@@ -74,7 +80,7 @@ export function TicketList({ items, emptyText, label, onTake }: Props) {
             data-ticket-id={t.id}
             data-number={t.number}
             onClick={() => router.push(`/tickets/${t.id}`)}
-            onMouseEnter={() => setIndex(i)}
+            onMouseEnter={() => setSelectedId(t.id)}
             className={clsx(
               'flex cursor-pointer items-center gap-3 px-3 py-2',
               i === index && 'bg-brand/10 outline outline-1 -outline-offset-1 outline-brand',

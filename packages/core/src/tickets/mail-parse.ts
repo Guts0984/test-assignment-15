@@ -48,8 +48,13 @@ export const parseRawMail = async (
     const value = unfold(h.line.slice(h.line.indexOf(':') + 1)).trim();
     headers[key] = headers[key] === undefined ? value : `${headers[key]} ${value}`;
   }
+  // Attachments over the limit are not stored, but the customer's message is never dropped: it becomes a ticket or a
+  // reply whose text says what was left out, so the agent can ask for the files another way.
   const total = parsed.attachments.reduce((n, a) => n + a.size, 0);
-  if (total > maxAttachmentBytes) return err('PAYLOAD_TOO_LARGE');
+  const oversized = total > maxAttachmentBytes;
+  const notice = oversized
+    ? `\n\n[${parsed.attachments.length} attachment(s) were not stored: ${parsed.attachments.map((a) => `${stripControlChars(a.filename ?? 'attachment')} (${(a.size / 1048576).toFixed(1)} MB)`).join(', ')}; the limit is ${Math.floor(maxAttachmentBytes / 1048576)} MB per message.]`
+    : '';
   const declared = parseMessageIds(parsed.messageId ?? getHeader(headers, 'message-id'))[0];
   const messageId =
     declared ?? `${createHash('sha256').update(raw).digest('hex')}@synthesized.invalid`;
@@ -61,11 +66,11 @@ export const parseRawMail = async (
     fromEmail,
     fromName: stripControlChars(from.name ?? '') || (fromEmail.split('@')[0] ?? 'Customer'),
     subject: stripControlChars(parsed.subject ?? '').slice(0, 300),
-    text: (parsed.text ?? '')
+    text: `${(parsed.text ?? '')
       .replace(/\u0000/g, '')
       .trim()
-      .slice(0, 100_000),
-    attachments: parsed.attachments.map((a) => ({
+      .slice(0, 100_000)}${notice}`.trim(),
+    attachments: (oversized ? [] : parsed.attachments).map((a) => ({
       filename: a.filename ?? 'attachment',
       contentType: a.contentType,
       data: a.content,
