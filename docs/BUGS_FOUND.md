@@ -54,3 +54,13 @@ A reviewer attacked the finished system; every finding below was reproduced or c
 | 36 | F21: logout signed the user out on every device | Access tokens carry a session id; logout ends that session and its sockets only (`session-sockets.serial.spec.ts`) |
 | 37 | F6: duplicate emails after `kill -9` (13 of 300 acknowledgements) | The sender cannot be made exactly once (SMTP has no atomic send-and-commit), so the receiving side is idempotent on Message-ID like a real mailbox provider; the stub drops repeats and the stack test now demands exactly one copy of every email (`resilience.stack.spec.ts`, `stub.spec.ts`) |
 | 38 | Search regression of the first fix: a bound tsquery parameter and an OR made Postgres collect every matching message (2-3 s for a common word, 9-50 s for a word with no match) | The tsquery is a constant, the two conditions are resolved separately, few matches are materialized, many matches check the newest 5,000 tickets first. Full seed, 6 runs each, in-process: 25-90 ms; worst case (2,100 matches all in the oldest tickets) 256 ms cold, 50 ms warm |
+
+### Third review round
+
+| # | Finding | Fix | Test |
+| --- | --- | --- | --- |
+| 39 | The first search for each new word took 0.7-2 s on a cold page cache (a hash join read every message holding the word; an exact count added about 2,000 more page reads). The perf test warmed every query first, so it never saw it | The count is gone (the planner estimate decides), the walk over the newest tickets is a LATERAL probe, the perf test times the first call of queries nobody ran before | `perf.perf.spec.ts` |
+| 40 | A phrase of two common words or a word with its own negation took 1.1-2.3 s | They only take the walk over the newest 5,000 tickets | `tickets.int.spec.ts`, `perf.perf.spec.ts` |
+| 41 | A reference number written in a message (4-12 digits) returned nothing, because every such query was a ticket number | No ticket with that number: fall back to text search | `tickets.int.spec.ts` |
+| 42 | The Playwright `setClock` did not wait for both api copies, so the next test's admin calls answered 401 and `createTeam` did not check them | The same wait as in the stack tests, and status checks in `createTeam` | Playwright journeys 2, 3, 4 and the keyboard spec |
+| 43 | Journey 4 asserted the text "Resolved", which is also an option of the status dropdown | It asserts the status badge the server saved | journey 4 |

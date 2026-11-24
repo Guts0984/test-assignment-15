@@ -6,7 +6,8 @@ test('the queue and the reply editor work with the keyboard only', async ({ page
   const agent = team.agents[0]?.email ?? '';
   await goOnShift(agent);
   const customer = `${uniq('cust')}@customer.test`;
-  for (const n of ['Keyboard one', 'Keyboard two']) await inject({ from: customer, to: team.mailbox, subject: n, text: 'hello' });
+  for (const n of ['Keyboard one', 'Keyboard two'])
+    await inject({ from: customer, to: team.mailbox, subject: n, text: 'hello' });
   await uiLogin(page, agent);
   await page.goto('/');
   await expect(page.getByTestId('ticket-row')).toHaveCount(2, { timeout: 30_000 });
@@ -15,12 +16,15 @@ test('the queue and the reply editor work with the keyboard only', async ({ page
   await expect(page.getByTestId('ticket-row').nth(1)).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('k');
   await expect(page.getByTestId('ticket-row').nth(0)).toHaveAttribute('aria-selected', 'true');
-  const subject = (await page.getByTestId('ticket-row').nth(0).locator('span.truncate').first().innerText()).trim();
+  const subject = (
+    await page.getByTestId('ticket-row').nth(0).locator('span.truncate').first().innerText()
+  ).trim();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('ticket-subject')).toContainText(subject);
   // focus the editor with Tab only, type, send with Ctrl+Enter, then undo with the focused Undo button (Enter)
   const editor = page.getByLabel('Reply to customer').last();
-  for (let i = 0; i < 60 && !(await editor.evaluate((el) => el === document.activeElement)); i += 1) await page.keyboard.press('Tab');
+  for (let i = 0; i < 60 && !(await editor.evaluate((el) => el === document.activeElement)); i += 1)
+    await page.keyboard.press('Tab');
   await expect(editor).toBeFocused();
   await page.keyboard.type('Typed without a mouse');
   await page.keyboard.press('Control+Enter');
@@ -32,16 +36,27 @@ test('the queue and the reply editor work with the keyboard only', async ({ page
   await page.keyboard.press('Control+Enter');
   await expect(page.getByTestId('undo-bar')).toBeVisible();
   await setClock({ advanceMs: 11_000 });
-  await poll(async () => (await stubMail(customer)).find((m) => m.text.includes('Typed without a mouse')), 40_000, 'mail sent');
+  await poll(
+    async () => (await stubMail(customer)).find((m) => m.text.includes('Typed without a mouse')),
+    40_000,
+    'mail sent',
+  );
   await setClock({ offsetMs: 0 });
 });
 
-test('search text and report filters live in the URL: reload and Back restore them', async ({ page }) => {
+test('search text and report filters live in the URL: reload and Back restore them', async ({
+  page,
+}) => {
   const team = await createTeam(1);
   const agent = team.agents[0]?.email ?? '';
   await goOnShift(agent);
   const word = `zebra${uniq('w').replace('-', '')}`;
-  await inject({ from: `${uniq('c')}@customer.test`, to: team.mailbox, subject: `Find ${word}`, text: `contains ${word} here` });
+  await inject({
+    from: `${uniq('c')}@customer.test`,
+    to: team.mailbox,
+    subject: `Find ${word}`,
+    text: `contains ${word} here`,
+  });
   await uiLogin(page, agent);
   await page.goto('/search');
   await page.getByTestId('search-input').fill(word);
@@ -77,6 +92,11 @@ test('the lead dashboard updates live when a ticket arrives', async ({ page }) =
   await page.goto('/dashboard');
   await page.getByTestId('dashboard-team').selectOption(team.teamId);
   await expect(page.getByTestId('unassigned-count')).toHaveText('0');
-  await inject({ from: `${uniq('c')}@customer.test`, to: team.mailbox, subject: 'Dashboard live', text: 'x' });
+  await inject({
+    from: `${uniq('c')}@customer.test`,
+    to: team.mailbox,
+    subject: 'Dashboard live',
+    text: 'x',
+  });
   await expect(page.getByTestId('unassigned-count')).toHaveText('1', { timeout: 20_000 });
 });

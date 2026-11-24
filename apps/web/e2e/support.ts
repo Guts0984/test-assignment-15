@@ -10,14 +10,24 @@ export const PASSWORD = 'E2e-Passw0rd!';
 
 export const uniq = (p: string): string => `${p}-${randomUUID().slice(0, 8)}`;
 
-const api = async (path: string, init: { method?: string; token?: string; body?: unknown; headers?: Record<string, string> } = {}) => {
+const api = async (
+  path: string,
+  init: { method?: string; token?: string; body?: unknown; headers?: Record<string, string> } = {},
+) => {
   const r = await fetch(`${base}${path}`, {
     method: init.method ?? 'GET',
-    headers: { ...(init.body === undefined ? {} : { 'content-type': 'application/json' }), ...(init.token === undefined ? {} : { authorization: `Bearer ${init.token}` }), ...(init.headers ?? {}) },
+    headers: {
+      ...(init.body === undefined ? {} : { 'content-type': 'application/json' }),
+      ...(init.token === undefined ? {} : { authorization: `Bearer ${init.token}` }),
+      ...(init.headers ?? {}),
+    },
     ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
   });
   const text = await r.text();
-  return { status: r.status, json: text === '' ? null : (JSON.parse(text) as Record<string, unknown>) };
+  return {
+    status: r.status,
+    json: text === '' ? null : (JSON.parse(text) as Record<string, unknown>),
+  };
 };
 
 export const login = async (email: string, password: string): Promise<string> => {
@@ -27,21 +37,76 @@ export const login = async (email: string, password: string): Promise<string> =>
 };
 
 export const setClock = async (body: { advanceMs?: number; offsetMs?: number }): Promise<void> => {
-  const r = await api('/api/v1/test/clock', { method: 'POST', body, headers: { 'x-test-control-token': controlToken } });
+  const r = await api('/api/v1/test/clock', {
+    method: 'POST',
+    body,
+    headers: { 'x-test-control-token': controlToken },
+  });
   if (r.status !== 200) throw new Error(`clock failed ${r.status}`);
+  // Both api copies pick the new offset up on their own (LISTEN, polling), not at the same instant. Until they agree a
+  // token issued by one looks "not valid yet" to the other and the next test's admin calls answer 401. Nginx alternates
+  // between the copies, so wait until consecutive answers are within two seconds of each other.
+  const end = Date.now() + 15_000;
+  for (;;) {
+    const times: number[] = [];
+    for (let i = 0; i < 8; i += 1) {
+      const t = await api('/api/v1/time');
+      times.push(Date.parse(String(t.json?.['now'])));
+    }
+    if (Math.max(...times) - Math.min(...times) < 2000) return;
+    if (Date.now() > end) throw new Error('the api copies did not agree on the clock');
+    await new Promise((res) => setTimeout(res, 200));
+  }
 };
 
-export type E2eTeam = { teamId: string; mailbox: string; agents: { email: string; id: string }[]; lead: { email: string; id: string } };
+export type E2eTeam = {
+  teamId: string;
+  mailbox: string;
+  agents: { email: string; id: string }[];
+  lead: { email: string; id: string };
+};
 
 export const createTeam = async (agents = 1): Promise<E2eTeam> => {
   const admin = await login('admin@helpdesk.test', staffPassword);
-  const team = await api('/api/v1/admin/teams', { method: 'POST', token: admin, body: { name: uniq('E2E'), defaultLanguage: 'en', timeZone: 'Europe/Kyiv', workdays: [1, 2, 3, 4, 5, 6, 7], workStart: '00:00', workEnd: '24:00' } });
+  const team = await api('/api/v1/admin/teams', {
+    method: 'POST',
+    token: admin,
+    body: {
+      name: uniq('E2E'),
+      defaultLanguage: 'en',
+      timeZone: 'Europe/Kyiv',
+      workdays: [1, 2, 3, 4, 5, 6, 7],
+      workStart: '00:00',
+      workEnd: '24:00',
+    },
+  });
+  if (team.status !== 201)
+    throw new Error(`team failed: ${team.status} ${JSON.stringify(team.json)}`);
   const teamId = String(team.json?.['id']);
   const mailbox = `${uniq('e2e')}@${domain}`.toLowerCase();
-  await api('/api/v1/admin/mailboxes', { method: 'POST', token: admin, body: { address: mailbox, defaultTeamId: teamId } });
+  const box = await api('/api/v1/admin/mailboxes', {
+    method: 'POST',
+    token: admin,
+    body: { address: mailbox, defaultTeamId: teamId },
+  });
+  if (box.status !== 201)
+    throw new Error(`mailbox failed: ${box.status} ${JSON.stringify(box.json)}`);
   const make = async (role: 'agent' | 'lead') => {
     const email = `${uniq(role)}@${domain}`;
-    const r = await api('/api/v1/admin/agents', { method: 'POST', token: admin, body: { email, name: `${role === 'lead' ? 'Lena Lead' : 'Alex Agent'} ${email.slice(-6)}`, password: PASSWORD, ticketLimit: role === 'lead' ? 0 : 20, languages: ['en'], memberships: [{ teamId, role }], active: true } });
+    const r = await api('/api/v1/admin/agents', {
+      method: 'POST',
+      token: admin,
+      body: {
+        email,
+        name: `${role === 'lead' ? 'Lena Lead' : 'Alex Agent'} ${email.slice(-6)}`,
+        password: PASSWORD,
+        ticketLimit: role === 'lead' ? 0 : 20,
+        languages: ['en'],
+        memberships: [{ teamId, role }],
+        active: true,
+      },
+    });
+    if (r.status !== 201) throw new Error(`${role} failed: ${r.status} ${JSON.stringify(r.json)}`);
     return { email, id: String(r.json?.['id']) };
   };
   const list = await Promise.all(Array.from({ length: agents }, () => make('agent')));
@@ -53,13 +118,22 @@ export const goOnShift = async (email: string): Promise<void> => {
   await api('/api/v1/me/shift', { method: 'PUT', token: t, body: { onShift: true } });
 };
 
-export const inject = async (m: { from: string; to: string; subject: string; text: string; inReplyTo?: string }): Promise<void> => {
+export const inject = async (m: {
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+  inReplyTo?: string;
+}): Promise<void> => {
   const r = await fetch(`${stub}/api/inbound`, { method: 'POST', body: JSON.stringify(m) });
   if (!r.ok) throw new Error(`inject failed ${r.status}`);
 };
 
 export type StubMail = { subject: string; to: string[]; messageId: string | null; text: string };
-export const stubMail = async (to: string): Promise<StubMail[]> => (await (await fetch(`${stub}/api/messages?to=${encodeURIComponent(to)}&limit=500`)).json()) as StubMail[];
+export const stubMail = async (to: string): Promise<StubMail[]> =>
+  (await (
+    await fetch(`${stub}/api/messages?to=${encodeURIComponent(to)}&limit=500`)
+  ).json()) as StubMail[];
 
 export const uiLogin = async (page: Page, email: string): Promise<void> => {
   await page.goto('/login');
@@ -69,7 +143,11 @@ export const uiLogin = async (page: Page, email: string): Promise<void> => {
   await expect(page.getByTestId('live-status')).toContainText('live');
 };
 
-export const poll = async <T>(fn: () => Promise<T | false | null | undefined>, ms = 30_000, label = 'condition'): Promise<T> => {
+export const poll = async <T>(
+  fn: () => Promise<T | false | null | undefined>,
+  ms = 30_000,
+  label = 'condition',
+): Promise<T> => {
   const end = Date.now() + ms;
   for (;;) {
     const v = await fn();

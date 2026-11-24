@@ -32,8 +32,11 @@ const measure = async (
   name: string,
   budgetMs: number,
   calls: (() => Promise<{ status: number; ms: number }>)[],
+  warm = true,
 ): Promise<void> => {
-  for (const c of calls) await c(); // warm cache: every call once before measuring (the budget is for a warm database)
+  // Queues and reports are measured warm. Searches pass warm = false: every query is a word nobody searched before, so
+  // the first call of each one is what is timed (cold pages, no plan or cache from an earlier call).
+  if (warm) for (const c of calls) await c();
   const times: number[] = [];
   for (const c of calls) {
     const r = await c();
@@ -70,7 +73,7 @@ describe('performance budgets on the full seed (through nginx)', () => {
   it('text search over correspondence is under 300 ms (terms in about 0.1-1% of messages), also for number and e-mail searches', async () => {
     const words = await db.$queryRaw<{ word: string }[]>`
       SELECT word FROM ts_stat('SELECT search_vector FROM messages TABLESAMPLE SYSTEM (0.5)')
-       WHERE ndoc BETWEEN 2 AND 150 ORDER BY ndoc DESC LIMIT 12`;
+       WHERE ndoc BETWEEN 2 AND 150 ORDER BY ndoc DESC LIMIT 40`;
     expect(words.length).toBeGreaterThan(5);
     const admin = await login('admin@helpdesk.test');
     const agent = await login('agent01@helpdesk.test');
@@ -79,23 +82,36 @@ describe('performance budgets on the full seed (through nginx)', () => {
       include: { customer: true },
     });
     // selective words (about 0.01-1% of messages), very common words, a two-word query, a ticket number and an e-mail address
-    const queries = [
-      ...words.map((w) => w.word),
-      'account',
+    // The admin and the agent get different words so that neither run is warmed by the other.
+    const q = encodeURIComponent;
+    const adminQueries = [
+      ...words.filter((_, i) => i % 2 === 0).map((w) => w.word),
       'password',
       'invoice+refund',
+      q('"account please"'), // phrase of two common words: only the newest tickets are walked
+      q('my -my'), // negation
+      `%23${sample.number}`,
+      sample.customer.email,
+    ];
+    const agentQueries = [
+      ...words.filter((_, i) => i % 2 === 1).map((w) => w.word),
+      'account',
+      q('"you my"'),
+      q('account -account'),
       `%23${sample.number}`,
       sample.customer.email,
     ];
     await measure(
-      'search (admin, all teams)',
+      'search (admin, all teams, first call of each query)',
       300,
-      queries.map((q) => () => admin.get(`/api/v1/search?q=${q}`)),
+      adminQueries.map((x) => () => admin.get(`/api/v1/search?q=${x}`)),
+      false,
     );
     await measure(
-      'search (agent, own team)',
+      'search (agent, own team, first call of each query)',
       300,
-      queries.map((q) => () => agent.get(`/api/v1/search?q=${q}`)),
+      agentQueries.map((x) => () => agent.get(`/api/v1/search?q=${x}`)),
+      false,
     );
   });
 

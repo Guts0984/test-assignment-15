@@ -33,7 +33,11 @@ test('reply and note are visually distinct (label, border style, background)', a
   await page.goto('/');
   await page.getByTestId('ticket-row').filter({ hasText: 'Reply versus note' }).click();
   const panel = page.getByTestId('composer');
-  const style = async () => panel.locator('div.rounded-md.border-2').evaluate((el) => { const s = getComputedStyle(el); return { border: s.borderTopStyle, bg: s.backgroundColor }; });
+  const style = async () =>
+    panel.locator('div.rounded-md.border-2').evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { border: s.borderTopStyle, bg: s.backgroundColor };
+    });
   await expect(panel).toHaveAttribute('data-kind', 'reply');
   const reply = await style();
   await expect(page.getByTestId('composer-hint')).toContainText('Public reply');
@@ -49,10 +53,14 @@ test('reply and note are visually distinct (label, border style, background)', a
   const msg = page.getByTestId('message').filter({ hasText: 'Only for colleagues' });
   await expect(msg).toHaveAttribute('data-kind', 'note');
   await expect(msg).toContainText('Internal note');
-  await expect(page.getByTestId('message').filter({ hasText: 'Body of the request' })).toHaveAttribute('data-kind', 'customer');
+  await expect(
+    page.getByTestId('message').filter({ hasText: 'Body of the request' }),
+  ).toHaveAttribute('data-kind', 'customer');
 });
 
-test('forms show errors next to the fields, including errors returned by the server', async ({ page }) => {
+test('forms show errors next to the fields, including errors returned by the server', async ({
+  page,
+}) => {
   await page.goto('/new-request');
   await page.getByRole('button', { name: 'Send request' }).click();
   await expect(page.getByTestId('error-nr-email')).toBeVisible();
@@ -75,7 +83,10 @@ test('forms show errors next to the fields, including errors returned by the ser
   await expect(page.getByText('Invalid email or password')).toBeVisible();
 });
 
-test('the SLA countdown follows the server clock even when the browser clock is two hours off', async ({ page, context }) => {
+test('the SLA countdown follows the server clock even when the browser clock is two hours off', async ({
+  page,
+  context,
+}) => {
   const { agent } = await arrive('Clock skew');
   await context.addInitScript(() => {
     const real = Date.now.bind(Date);
@@ -85,10 +96,19 @@ test('the SLA countdown follows the server clock even when the browser clock is 
   await page.goto('/');
   const row = page.getByTestId('ticket-row').filter({ hasText: 'Clock skew' });
   await expect(row).toBeVisible();
-  const remaining = Number(await row.getByTestId('sla-countdown').getAttribute('data-remaining-ms'));
+  const remaining = Number(
+    await row.getByTestId('sla-countdown').getAttribute('data-remaining-ms'),
+  );
   const token = await login(agent, PASSWORD);
-  const r = await fetch(`${base}/api/v1/tickets/queue`, { headers: { authorization: `Bearer ${token}` } });
-  const item = ((await r.json()) as { items: { subject: string; firstResponseDueAt: string }[]; serverTime: string }).items.find((i) => i.subject === 'Clock skew');
+  const r = await fetch(`${base}/api/v1/tickets/queue`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  const item = (
+    (await r.json()) as {
+      items: { subject: string; firstResponseDueAt: string }[];
+      serverTime: string;
+    }
+  ).items.find((i) => i.subject === 'Clock skew');
   const serverLeft = Date.parse(item?.firstResponseDueAt ?? '') - Date.now() - 0; // real Node clock = server clock here
   expect(Math.abs(remaining - serverLeft)).toBeLessThan(15_000); // equals the server's view, not the skewed browser's (which would be ~-2 h)
   expect(remaining).toBeGreaterThan(0);

@@ -180,7 +180,9 @@ export function TicketView({ ticketId }: { ticketId: string }) {
             #{t.number} {t.subject}
           </h1>
           <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-            <Badge tone={STATUS_TONE[t.status] ?? 'gray'}>{STATUS_LABEL[t.status]}</Badge>
+            <span data-testid="ticket-status" data-status={t.status}>
+              <Badge tone={STATUS_TONE[t.status] ?? 'gray'}>{STATUS_LABEL[t.status]}</Badge>
+            </span>
             <Badge tone={PRIORITY_TONE[t.priority] ?? 'gray'}>{PRIORITY_LABEL[t.priority]}</Badge>
             <SlaCountdown dueAt={deadline?.at ?? null} label={deadline?.label ?? undefined} />
             {t.mergedIntoNumber !== null ? <span>Merged into #{t.mergedIntoNumber}</span> : null}

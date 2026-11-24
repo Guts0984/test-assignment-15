@@ -284,6 +284,27 @@ describe('search, dashboard and reports', () => {
     }
   });
 
+  it('a reference number written in a message is found by text search, a phrase matches adjacent words, a negation excludes (review)', async () => {
+    const w = await world();
+    const ref = String(10_000 + Math.floor(Math.random() * 80_000));
+    const word = `zq${uniq('p').replace('-', '')}`;
+    const t = await receiveTicket(api, w.box, {
+      text: `my reference ${ref} is stuck, ${word} alpha beta`,
+    });
+    const other = await receiveTicket(api, w.box, { text: `${word} alpha only` });
+    const ids = async (q: string): Promise<string[]> =>
+      (
+        (await w.agent.client.get(`/api/v1/search?q=${encodeURIComponent(q)}`)).json as {
+          items: { id: string }[];
+        }
+      ).items.map((i) => i.id);
+    expect(await ids(ref)).toEqual([t.ticketId]); // 4-12 digits that are no ticket number fall back to text
+    expect(await ids(`"alpha beta"`)).toContain(t.ticketId);
+    expect(await ids(`"alpha beta"`)).not.toContain(other.ticketId);
+    expect(await ids(`${word} -beta`)).toEqual([other.ticketId]);
+    expect(await ids(`#${t.number}`)).toEqual([t.ticketId]); // a real ticket number still wins
+  });
+
   it('a very common word lists the newest matching tickets first, not a sample (review F7)', async () => {
     const w = await world();
     const word = `zq${uniq('c').replace('-', '')}`;
