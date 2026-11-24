@@ -23,6 +23,7 @@ import {
   type TicketDetail,
 } from '@/shared/api';
 import { useSocket } from '@/shared/socket';
+import { describeEvent, type NameLookup } from '../model/history-text';
 import { Badge, Card, ErrorNote, Spinner } from '@/shared/ui';
 
 type Viewer = { userId: string; name: string; state: 'viewing' | 'typing' };
@@ -113,6 +114,11 @@ export function TicketView({ ticketId }: { ticketId: string }) {
     staleTime: 60_000,
   });
   const detail = query.data;
+  const names = useMemo<NameLookup>(() => {
+    const users = new Map((directory.data?.agents ?? []).map((a) => [a.id, a.name]));
+    const teams = new Map((directory.data?.teams ?? []).map((t) => [t.id, t.name]));
+    return { user: (id) => users.get(id) ?? null, team: (id) => teams.get(id) ?? null };
+  }, [directory.data]);
   const seen = useMemo(() => (detail === undefined ? 0 : lastPublicSeq(detail.messages)), [detail]);
   useEffect(() => {
     lastSeq.current = Math.max(lastSeq.current, detail?.ticket.messageSeq ?? 0);
@@ -249,10 +255,8 @@ export function TicketView({ ticketId }: { ticketId: string }) {
                 <time className="text-[var(--muted)]">
                   {new Date(e.createdAt).toLocaleString()}
                 </time>{' '}
-                — <b>{e.actorName ?? e.actorKind}</b> {e.type.replace(/_/g, ' ')}{' '}
-                {Object.keys(e.data).length > 0 ? (
-                  <span className="text-[var(--muted)]">{JSON.stringify(e.data)}</span>
-                ) : null}
+                — <b>{e.actorName ?? e.actorKind}</b>{' '}
+                <span className="text-[var(--muted)]">{describeEvent(e, names)}</span>
               </li>
             ))}
           </ol>
