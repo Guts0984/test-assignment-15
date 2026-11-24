@@ -96,8 +96,14 @@ export const getListItem = async (db: Queryable, id: string) =>
 
 /** How many of the newest tickets a walk looks at. */
 const RECENT_WINDOW = 5000;
-/** Estimated matches from which a word counts as common: a page of 20 then needs fewer than RECENT_WINDOW tickets. */
-const COMMON_ESTIMATE = 2000;
+/** Estimated matches from which the planner is known to see a word as common (it is in the column statistics). */
+const VERY_COMMON_ESTIMATE = 100_000;
+/** How long the attempt to materialize every match may take before the search walks the newest tickets instead. */
+const MATERIALIZE_TRIAL_MS = 30;
+/** A phrase or negation whose walk did not fill the page gets one longer attempt before it settles for the walk. */
+const MATERIALIZE_SECOND_TRIAL_MS = 150;
+/** The walk for a phrase or a negation (checked row by row, rarely dense). */
+const RECENT_WINDOW_HEAVY = 2500;
 
 /** `websearch_to_tsquery` evaluated once and returned as a quoted constant; the text only contains quoted lexemes and operators. */
 const tsqueryLiteral = async (db: Queryable, q: string): Promise<string> => {
@@ -114,11 +120,62 @@ const estimateRows = async (
   column: 'search_vector' | 'subject_vector',
   tsq: string,
 ): Promise<number> => {
-  const plan = await db.$queryRawUnsafe<{ 'QUERY PLAN': unknown }[]>(
-    `EXPLAIN (FORMAT JSON) SELECT 1 FROM ${table} WHERE ${column} @@ ${tsq}`,
-  );
+  // An estimate that cannot be computed counts as "very common": the walk is always correct, only slower to be exact.
+  const plan = await db
+    .$queryRawUnsafe<{ 'QUERY PLAN': unknown }[]>(
+      `EXPLAIN (FORMAT JSON) SELECT 1 FROM ${table} WHERE ${column} @@ ${tsq}`,
+    )
+    .catch(() => null);
+  if (plan === null) return Number.POSITIVE_INFINITY;
   const first = (plan[0]?.['QUERY PLAN'] as { Plan?: { 'Plan Rows'?: number } }[] | undefined)?.[0];
   return first?.Plan?.['Plan Rows'] ?? 0;
+};
+
+/**
+ * The search with phrase operators turned into AND and negated terms removed, split into single-term tsquery constants
+ * (for the row estimate only), or null when nothing is left to narrow by (a query made only of negations).
+ */
+const relaxedLiteral = async (
+  db: Queryable,
+  q: string,
+): Promise<{ readonly terms: readonly string[]; readonly anyOf: boolean } | null> => {
+  const r = await db.$queryRaw<
+    { t: string }[]
+  >`SELECT websearch_to_tsquery('simple', ${q})::text AS t`;
+  const text = (r[0]?.t ?? '')
+    .replace(/&?\s*!\s*(\([^()]*\)|'[^']*')/g, '')
+    .replace(/<[0-9-]*>/g, '&')
+    .replace(/^\s*[&|]\s*|\s*[&|]\s*$/g, '')
+    .trim();
+  if (text === '') return null;
+  const terms = text
+    .replace(/[()]/g, ' ')
+    .split(/\s*[&|]\s*/)
+    .map((t) => t.trim())
+    .filter((t) => t !== '');
+  if (terms.length === 0) return null;
+  return {
+    terms: terms.map((t) => `'${t.replace(/'/g, "''")}'::tsquery`),
+    anyOf: text.includes('|'),
+  };
+};
+
+/** Runs `fn` with a statement timeout; null when it timed out. Without a client to open a transaction it just runs. */
+const withStatementTimeout = async <T>(
+  db: Queryable,
+  ms: number,
+  fn: (q: Queryable) => Promise<T>,
+): Promise<T | null> => {
+  if (!('$transaction' in db)) return fn(db);
+  try {
+    return await db.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = ${Math.floor(ms)}`);
+      return fn(tx);
+    });
+  } catch (e) {
+    if (/statement timeout|57014/i.test(e instanceof Error ? e.message : String(e))) return null;
+    throw e;
+  }
 };
 
 const escapeLike = (s: string): string => s.replace(/[\\%_]/g, '\\$&');
@@ -160,27 +217,41 @@ export const searchTickets = async (
   // The tsquery is inlined as a constant: with a bind parameter Postgres cannot see the word's frequency at plan time.
   // The message and subject conditions are resolved on their own and never joined with OR (Postgres would collect every
   // matching message first). For each one the planner's row estimate (free: no page is read) decides the strategy:
-  //  - few expected matches: materialize them from the GIN index, join to tickets and order (cost = one page per match);
+  //  - few expected matches: materialize them from the GIN index (a phrase or a negation is re-checked on exactly those
+  //    rows), join to tickets and order. Complete, and the cost is one page per match;
   //  - many expected matches (a common word): walk the newest RECENT_WINDOW tickets one by one and stop once the page is
-  //    full. The LATERAL ... LIMIT 1 forces that walk, a plain EXISTS lets Postgres hash every matching message first.
-  // Phrases and negations are re-checked row by row, so they only ever take the walk (the newest tickets).
+  //    full. Each ticket is probed through the ticket_id btree (the tsvector is concatenated with '' so the planner
+  //    cannot pick the GIN index, which would read the word's whole posting list once per ticket).
+  // For a phrase or a negation the estimate is taken from the same query with the operators relaxed to AND and the
+  // negated terms dropped: the GIN index can only narrow by those words.
   const tsq = await tsqueryLiteral(db, q);
-  const heavy = /<->|!/.test(tsq);
   const wanted = limit + offset;
-  const estimateMessages = heavy
-    ? Number.POSITIVE_INFINITY
-    : await estimateRows(db, 'messages', 'search_vector', tsq);
-  const estimateSubjects = heavy
-    ? Number.POSITIVE_INFINITY
-    : await estimateRows(db, 'tickets', 'subject_vector', tsq);
+  const relaxed = await relaxedLiteral(db, q);
+  const estimateOf = async (
+    table: 'messages' | 'tickets',
+    column: 'search_vector' | 'subject_vector',
+  ): Promise<number> => {
+    if (relaxed === null) return Number.POSITIVE_INFINITY;
+    // The planner's estimate for an AND of words assumes they are independent and is far too low for words that go
+    // together. The rarest word bounds the rows that survive the AND, so the estimate is the minimum over the terms
+    // (the sum for OR).
+    const terms = relaxed.terms.map((t) => estimateRows(db, table, column, t));
+    const all = await Promise.all(terms);
+    return relaxed.anyOf ? all.reduce((x, y) => x + y, 0) : Math.min(...all);
+  };
+  const estimateMessages = await estimateOf('messages', 'search_vector');
+  const estimateSubjects = await estimateOf('tickets', 'subject_vector');
+  // A phrase or a negation is re-checked row by row and is rarely dense, so its walk looks at fewer tickets.
+  const heavy = /<->|!/.test(tsq);
+  const window = heavy ? RECENT_WINDOW_HEAVY : RECENT_WINDOW;
   const walkIds = async (matches: 'messages' | 'subject'): Promise<string[]> => {
     const test =
       matches === 'messages'
-        ? `JOIN LATERAL (SELECT 1 FROM messages m WHERE m.ticket_id = r.id AND m.cancelled_at IS NULL AND m.search_vector @@ ${tsq} LIMIT 1) h ON true`
+        ? `JOIN LATERAL (SELECT 1 FROM messages m WHERE m.ticket_id = r.id AND m.cancelled_at IS NULL AND (m.search_vector || ''::tsvector) @@ ${tsq} LIMIT 1) h ON true`
         : `JOIN LATERAL (SELECT 1 WHERE r.subject_vector @@ ${tsq}) h ON true`;
     const rows = await db.$queryRawUnsafe<{ id: string }[]>(
       `SELECT r.id FROM (SELECT t.id, t.updated_at, t.subject_vector FROM tickets t WHERE ${cond} AND $1::text IS NOT NULL
-                          ORDER BY t.updated_at DESC LIMIT ${RECENT_WINDOW}) r
+                          ORDER BY t.updated_at DESC LIMIT ${window}) r
         ${test} ORDER BY r.updated_at DESC LIMIT $3`,
       q,
       teams,
@@ -188,35 +259,55 @@ export const searchTickets = async (
     );
     return rows.map((x) => x.id);
   };
-  const common = (estimate: number): boolean => estimate >= COMMON_ESTIMATE;
-  let walkedMessages = common(estimateMessages) ? await walkIds('messages') : null;
-  if (walkedMessages !== null && walkedMessages.length < wanted && !heavy) walkedMessages = null; // sparse: materialize
-  let walkedSubjects = common(estimateSubjects) ? await walkIds('subject') : null;
-  if (walkedSubjects !== null && walkedSubjects.length < wanted && !heavy) walkedSubjects = null;
-  const ctes = [
-    walkedMessages !== null
-      ? `mh AS MATERIALIZED (SELECT unnest($6::uuid[]) AS id)`
-      : `mh AS MATERIALIZED (SELECT DISTINCT m.ticket_id AS id FROM messages m WHERE m.search_vector @@ ${tsq} AND m.cancelled_at IS NULL)`,
-    walkedSubjects !== null
-      ? `sh AS MATERIALIZED (SELECT unnest($7::uuid[]) AS id)`
-      : `sh AS MATERIALIZED (SELECT t2.id FROM tickets t2 WHERE t2.subject_vector @@ ${tsq})`,
+  // One condition (messages or subjects) as a list of ticket ids, best strategy first:
+  //  1. Unless the planner KNOWS the word is very common (it is in the column statistics), try to materialize every
+  //     match from the GIN index under a short statement timeout. For a rare word, a rare phrase or a narrow negation
+  //     that finishes at once and the answer is complete. For a word like "denim" (thousands of matches, unknown to the
+  //     statistics, which then estimate a flat 3,200 rows) a cold cache makes it hit the timeout.
+  //  2. Otherwise walk the newest tickets one by one until the page is full (exact for the newest matches).
+  //  3. A walk that does not fill the page means the matches are few or old: a single word is then materialized without a
+  //     timeout, a phrase or a negation gets one longer attempt. A phrase or negation over very common words that still
+  //     times out (the multi-second path) answers from the walk and so only covers the newest tickets.
+  const matches = async (
+    kind: 'messages' | 'subject',
+    estimate: number,
+  ): Promise<readonly string[]> => {
+    const sql =
+      kind === 'messages'
+        ? `SELECT DISTINCT m.ticket_id AS id FROM messages m WHERE m.search_vector @@ ${tsq} AND m.cancelled_at IS NULL`
+        : `SELECT t.id FROM tickets t WHERE t.subject_vector @@ ${tsq}`;
+    const run = (x: Queryable): Promise<{ id: string }[]> =>
+      x.$queryRawUnsafe<{ id: string }[]>(sql);
+    if (estimate < VERY_COMMON_ESTIMATE) {
+      const quick = await withStatementTimeout(db, MATERIALIZE_TRIAL_MS, run);
+      if (quick !== null) return quick.map((r) => r.id);
+    }
+    const walked = await walkIds(kind);
+    if (walked.length >= wanted) return walked;
+    if (!heavy) return (await run(db)).map((r) => r.id);
+    const second = await withStatementTimeout(db, MATERIALIZE_SECOND_TRIAL_MS, run);
+    return second === null ? walked : second.map((r) => r.id);
+  };
+  const [messageIds, subjectIds] = [
+    await matches('messages', estimateMessages),
+    await matches('subject', estimateSubjects),
   ];
-  const branch = (cte: 'mh' | 'sh'): string =>
-    `SELECT t.id, t.updated_at FROM ${cte} JOIN tickets t ON t.id = ${cte}.id WHERE ${cond} ORDER BY t.updated_at DESC LIMIT $5`;
   const rows = await db.$queryRawUnsafe<(Row & { snippet: string | null })[]>(
-    `WITH ${[...ctes, `hits AS ((${branch('mh')}) UNION (${branch('sh')}))`].join(',\n')}
+    `WITH mh AS MATERIALIZED (SELECT unnest($6::uuid[]) AS id), sh AS MATERIALIZED (SELECT unnest($7::uuid[]) AS id),
+          hits AS ((SELECT t.id, t.updated_at FROM mh JOIN tickets t ON t.id = mh.id WHERE ${cond} ORDER BY t.updated_at DESC LIMIT $5)
+                   UNION (SELECT t.id, t.updated_at FROM sh JOIN tickets t ON t.id = sh.id WHERE ${cond} ORDER BY t.updated_at DESC LIMIT $5))
      SELECT ${COLS}, NULL::text AS snippet
        FROM (SELECT id, updated_at FROM hits ORDER BY updated_at DESC LIMIT $3 OFFSET $4) h
        JOIN tickets t ON t.id = h.id JOIN customers c ON c.id = t.customer_id LEFT JOIN users u ON u.id = t.assignee_id
-      WHERE $1::text IS NOT NULL AND $6::uuid[] IS NOT NULL AND $7::uuid[] IS NOT NULL
+      WHERE $1::text IS NOT NULL
       ORDER BY t.updated_at DESC`,
     q,
     teams,
     limit,
     offset,
     wanted,
-    walkedMessages ?? [],
-    walkedSubjects ?? [],
+    [...messageIds],
+    [...subjectIds],
   );
   const byName =
     rows.length >= limit
