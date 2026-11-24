@@ -164,6 +164,7 @@ export const cancelReply = async (
   const cancelled = await c.tx.$queryRaw<{ id: string }[]>`
     UPDATE outbound_emails SET state = 'cancelled'
      WHERE message_id = ${msg.id}::uuid AND state = 'scheduled' AND send_after > ${c.now}
+       AND attempts = 0 -- a send that was already attempted and is only waiting for a retry can no longer be undone
     RETURNING id`;
   const row = cancelled[0];
   if (row === undefined)

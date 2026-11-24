@@ -370,6 +370,26 @@ describe('INV-4b / INV-5: outbound email is sent exactly once', () => {
     expect(asked).toBe(0);
   });
 
+  it('a reply whose first send got a temporary error cannot be undone while it waits for the retry', async () => {
+    const s = await setup();
+    const log: string[] = [];
+    const now = at(T0, 10_000);
+    expect(await go(s, now, send(log, ['transient']))).toBe('retry');
+    const waiting = await db.outboundEmail.findUniqueOrThrow({ where: { id: s.reply.outboundId } });
+    expect(waiting.state).toBe('scheduled');
+    expect(waiting.sendAfter.getTime()).toBeGreaterThan(now.getTime()); // the retry is in the future
+    const undo = await run(db, at(now, 100), (c) =>
+      cancelReply(c, {
+        ticketId: s.t.ticketId,
+        messageId: s.reply.messageId,
+        actor: { kind: 'agent', userId: s.agent.id },
+      }),
+    );
+    expect(undo.ok ? 'ok' : undo.error.code).toBe('UNDO_WINDOW_EXPIRED');
+    expect(await go(s, waiting.sendAfter, send(log))).toBe('done');
+    expect(log).toHaveLength(1); // still delivered once
+  });
+
   it('five workers racing for the same email send it once', async () => {
     const s = await setup();
     const log: string[] = [];
